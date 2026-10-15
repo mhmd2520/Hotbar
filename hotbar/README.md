@@ -7,8 +7,8 @@ A number key opens that project in a maximized Windows Terminal running `claude`
 a number within ~200 ms (the *blind chord*) opens the project without showing the menu at all. Ctrl ×2 again
 closes the menu.
 
-Hotbar always starts silently in the tray. To start it by hand, use **Start menu → Hotbar** (or run
-`src-tauri\target\release\hotbar.exe`); starting it again while it runs opens the menu.
+Clicking **Start menu → Hotbar** (or the desktop icon) opens the menu, starting Hotbar first if needed.
+Autostart at logon passes `--background`, so it stays silent in the tray.
 
 | Key in the menu | Does |
 |---|---|
@@ -52,7 +52,7 @@ Low-level keyboard hooks don't see keys typed into admin windows unless Hotbar i
 From an admin PowerShell:
 
 ```powershell
-.\scripts\install-autostart.ps1      # logon task with highest privileges
+.\scripts\install-autostart.ps1      # logon task with highest privileges, starts with --background
 .\scripts\uninstall-autostart.ps1
 ```
 

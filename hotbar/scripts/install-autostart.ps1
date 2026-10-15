@@ -18,7 +18,8 @@ if (-not $Exe -or -not (Test-Path $Exe)) { throw "hotbar.exe not found. Pass -Ex
 $Exe = (Resolve-Path $Exe).Path
 $user = "$env:USERDOMAIN\$env:USERNAME"
 
-$action    = New-ScheduledTaskAction -Execute $Exe -WorkingDirectory (Split-Path $Exe)
+# --background: start silently in the tray (a start from the Start menu opens the menu instead)
+$action    = New-ScheduledTaskAction -Execute $Exe -Argument '--background' -WorkingDirectory (Split-Path $Exe)
 $trigger   = New-ScheduledTaskTrigger -AtLogOn -User $user
 $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Highest
 $settings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `

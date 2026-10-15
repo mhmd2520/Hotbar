@@ -387,8 +387,20 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            // Always start silently in the tray. A broken config.json is reported when the menu
-            // opens (Store keeps returning the parse error until the file is fixed).
+            // Autostart passes --background and stays silent in the tray. A start from the Start menu
+            // or desktop icon opens the menu, so the click visibly does something. A broken
+            // config.json is reported whenever the menu opens (Store keeps returning the parse error).
+            if !std::env::args().any(|a| a == "--background") {
+                let h = handle.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(500)); // let the page load
+                    show_overlay(&h, "menu");
+                });
+            }
+            if winutil::is_elevated() {
+                let ok = winutil::accept_second_instance_messages(&app.config().identifier);
+                log(&format!("elevated; shortcut messages from normal apps allowed: {ok}"));
+            }
             log(&format!("started, pid {}", std::process::id()));
             if let Some(e) = &load_error {
                 log(&format!("config error: {e}"));

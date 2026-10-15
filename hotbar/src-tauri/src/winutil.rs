@@ -106,6 +106,18 @@ pub fn disable_power_throttling() {
     }
 }
 
+/// When Hotbar runs elevated, Windows (UIPI) drops messages sent to it by normal-integrity apps.
+/// That includes the WM_COPYDATA a second `hotbar.exe` (Start menu / desktop shortcut) uses to say
+/// "open the menu", so the shortcut silently did nothing. Let exactly that message through to the
+/// single-instance plugin's window (class `<identifier>-sic`).
+pub fn accept_second_instance_messages(identifier: &str) -> bool {
+    use windows::Win32::UI::WindowsAndMessaging::{ChangeWindowMessageFilterEx, MSGFLT_ALLOW, WM_COPYDATA};
+    unsafe {
+        let Ok(hwnd) = FindWindowW(&HSTRING::from(format!("{identifier}-sic")), None) else { return false };
+        ChangeWindowMessageFilterEx(hwnd, WM_COPYDATA, MSGFLT_ALLOW, None).is_ok()
+    }
+}
+
 /// True if this process runs with an elevated (admin) token.
 pub fn is_elevated() -> bool {
     use windows::Win32::Foundation::{CloseHandle, HANDLE};
