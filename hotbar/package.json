@@ -1,0 +1,15 @@
+{
+  "name": "hotbar",
+  "private": true,
+  "version": "0.1.0",
+  "description": "One keystroke to any project, Claude Code already running.",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "icons": "tauri icon ../branding/hotbar-icon.png"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

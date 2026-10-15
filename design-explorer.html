@@ -1,0 +1,1813 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Launcher Design Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f2ec; --surface:#fffdf9; --surface-2:#efeae1; --line:#ddd5c8;
+  --text:#1e1b17; --muted:#6d665c; --accent:#c4562f; --accent-ink:#fff;
+  --grass:#4f8a2e; --warn:#a8650f; --ok:#2f7a50; --code-bg:#1b1916; --code-text:#f1ebe2;
+  --shadow:0 1px 2px rgba(0,0,0,.06),0 8px 24px rgba(0,0,0,.06);
+  --r:14px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#121110; --surface:#1b1a18; --surface-2:#242220; --line:#35312c;
+    --text:#ece7df; --muted:#a39b8f; --accent:#e07a52; --accent-ink:#1a0f0a;
+    --grass:#7cc04f; --warn:#e3a33b; --ok:#5cc28a; --code-bg:#0c0b0a; --code-text:#efe8dd;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121110; --surface:#1b1a18; --surface-2:#242220; --line:#35312c;
+  --text:#ece7df; --muted:#a39b8f; --accent:#e07a52; --accent-ink:#1a0f0a;
+  --grass:#7cc04f; --warn:#e3a33b; --ok:#5cc28a; --code-bg:#0c0b0a; --code-text:#efe8dd;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:70px}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 "IBM Plex Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--accent)}
+h1,h2,h3{font-family:"Bricolage Grotesque",system-ui,sans-serif;line-height:1.15;margin:0}
+h2{font-size:clamp(26px,3.4vw,36px);font-weight:800;letter-spacing:-.02em}
+h3{font-size:18px;font-weight:700}
+code,kbd,pre{font-family:"JetBrains Mono",ui-monospace,monospace}
+kbd{font-size:.82em;padding:1px 6px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;background:var(--surface);white-space:nowrap}
+.wrap{max-width:1220px;margin:0 auto;padding:0 16px}
+button{font:inherit;color:inherit;cursor:pointer}
+
+/* ── top nav ── */
+.top{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:18px;height:56px}
+.brand{display:flex;align-items:center;gap:10px;font-family:"Bricolage Grotesque";font-weight:800;white-space:nowrap}
+.brand svg{width:26px;height:26px}
+.nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1}
+.nav a{color:var(--muted);text-decoration:none;font-size:13px;padding:6px 10px;border-radius:8px;white-space:nowrap}
+.nav a:hover{color:var(--text);background:var(--surface-2)}
+.nav a b{font-family:"JetBrains Mono";font-weight:600;color:var(--accent);margin-right:4px}
+.iconbtn{border:1px solid var(--line);background:var(--surface);border-radius:9px;height:34px;padding:0 10px;font-size:13px;white-space:nowrap}
+
+/* ── hero ── */
+.hero{padding:56px 0 26px}
+.eyebrow{font-family:"JetBrains Mono";font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.hero h1{font-size:clamp(34px,5.6vw,64px);font-weight:800;letter-spacing:-.035em;margin:10px 0 14px;max-width:16ch}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.lede{font-size:18px;color:var(--muted);max-width:68ch}
+.howto{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:5px 12px;font-size:13px}
+
+section{padding:46px 0;border-top:1px solid var(--line)}
+.sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:10px;flex-wrap:wrap}
+.sec-num{font-family:"JetBrains Mono";color:var(--accent);font-size:14px}
+.sec-sub{color:var(--muted);max-width:75ch;margin:0 0 22px}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+@media (max-width:900px){.grid3,.grid4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:620px){.grid2,.grid3,.grid4{grid-template-columns:minmax(0,1fr)}}
+
+/* verdict */
+.verdict{display:grid;grid-template-columns:1.25fr 1fr;gap:16px}
+@media (max-width:860px){.verdict{grid-template-columns:1fr}}
+.verdict p{margin:0 0 10px}
+.risk{display:flex;gap:12px;padding:12px 0;border-top:1px dashed var(--line)}
+.risk:first-of-type{border-top:0;padding-top:4px}
+.risk .tag{flex:none;font-family:"JetBrains Mono";font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px;height:fit-content;margin-top:3px}
+.t-warn{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.t-ok{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.t-acc{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
+.risk b{display:block}
+.risk span.d{color:var(--muted);font-size:14px}
+
+/* ── playground ── */
+.play{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start}
+@media (max-width:1000px){.play{grid-template-columns:minmax(0,1fr)}}
+.uichips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:7px 12px;text-align:left;line-height:1.25}
+.chip small{display:block;color:var(--muted);font-size:11.5px}
+.chip[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent);background:color-mix(in srgb,var(--accent) 7%,var(--surface))}
+.chip .fav{color:var(--accent);margin-left:4px}
+
+.stage{position:relative;height:540px;border-radius:var(--r);overflow:hidden;outline:none;isolation:isolate;border:1px solid var(--line);background:#0b0d12;box-shadow:var(--shadow);user-select:none}
+.stage.armed{box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 55%,transparent),var(--shadow)}
+@media (max-width:620px){.stage{height:500px}}
+.wall{position:absolute;inset:0;background:
+  radial-gradient(circle at 18% 22%,rgba(255,170,90,.55),transparent 45%),
+  radial-gradient(circle at 85% 80%,rgba(80,160,255,.45),transparent 50%),
+  linear-gradient(135deg,#1b2a44,#2f5d7c 45%,#7a4b6e)}
+.fakewin{position:absolute;border-radius:8px;background:#1e1f24;box-shadow:0 20px 50px rgba(0,0,0,.45);overflow:hidden}
+.fakewin i{display:block;height:7px;border-radius:4px;margin:9px 14px;background:rgba(255,255,255,.14)}
+.fakewin .tb{height:26px;background:#2a2c33}
+.armtag{position:absolute;top:10px;left:10px;z-index:8;font:11px "JetBrains Mono";color:#fff;background:rgba(0,0,0,.55);padding:4px 8px;border-radius:6px;pointer-events:none}
+.summon{position:absolute;inset:0;display:none;place-items:center;z-index:2;color:#fff;font-family:"Bricolage Grotesque";font-size:20px;text-shadow:0 2px 12px rgba(0,0,0,.6);cursor:pointer;text-align:center}
+.summon kbd{color:#111;font-size:16px}
+.summon.show{display:grid}
+
+/* overlay */
+.ov{position:absolute;inset:0;z-index:3;display:flex;backdrop-filter:blur(var(--s-blur));-webkit-backdrop-filter:blur(var(--s-blur));transition:opacity .18s}
+.ov.hidden{display:none}
+.ov.closing{opacity:0}
+.ov.closing .panel{scale:.97;transition:scale .18s}
+.ui{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--s-font);color:var(--s-text);padding:16px;min-width:0}
+.panel{transform:perspective(1000px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .2s ease-out;position:relative;max-width:100%}
+.panel.flat{transform:none}
+.hint{margin-top:14px;font-size:var(--s-hint);opacity:.8;text-align:center;text-shadow:var(--s-shadow)}
+#ov kbd{background:transparent;color:inherit;border-color:color-mix(in srgb,var(--s-text) 30%,transparent)}
+.list{scrollbar-width:none}
+.list::-webkit-scrollbar{display:none}
+
+/* 1 blockcraft */
+.bc-title{font-family:var(--s-title);font-size:var(--s-tsize);font-weight:700;text-align:center;margin-bottom:16px;text-shadow:var(--s-shadow)}
+.bc-list{display:flex;flex-direction:column;gap:6px;max-height:350px;overflow:auto;padding:4px}
+.mcb{all:unset;box-sizing:border-box;position:relative;display:flex;align-items:center;gap:12px;width:min(410px,78vw);height:42px;flex:none;padding:0 12px 0 6px;cursor:pointer;
+  background:var(--s-item);border:var(--s-bw) solid var(--s-border);border-radius:var(--s-radius);box-shadow:var(--s-bevel);
+  color:var(--s-text);font-family:var(--s-font);font-size:var(--s-size);text-shadow:var(--s-shadow);transition:background-color .12s}
+.mcb.sel{background-color:var(--s-item-hi);color:var(--s-hi);box-shadow:0 0 0 2px var(--s-hi),var(--s-bevel)}
+.mcb-key{width:28px;height:28px;flex:none;display:grid;place-items:center;background:rgba(0,0,0,.35);box-shadow:inset 0 -4px 0 var(--pc);font-size:.85em;border-radius:calc(var(--s-radius) * .6)}
+.mcb-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mcb-meta{font-size:.72em;opacity:.75;white-space:nowrap}
+.bc-sep{height:2px;background:rgba(0,0,0,.45);margin:3px auto;width:min(380px,74vw);flex:none}
+
+/* 2 hotbar */
+.ui-hot{justify-content:flex-end;padding-bottom:26px}
+.hot-tip{font-size:calc(var(--s-size) * 1.15);font-weight:600;color:var(--s-hi);text-shadow:var(--s-shadow);min-height:32px;text-align:center}
+.hot-path{font-size:calc(var(--s-size) * .72);opacity:.85;min-height:24px;margin-bottom:6px;text-align:center;text-shadow:var(--s-shadow)}
+.hot-tip.flash,.hot-path.flash{animation:tipFade 2.4s forwards}
+@keyframes tipFade{0%,70%{opacity:1}100%{opacity:.25}}
+.hotbar{display:flex;gap:4px;padding:5px;background:var(--s-panel);border:var(--s-bw) solid var(--s-border);border-radius:var(--s-radius2);box-shadow:0 18px 50px rgba(0,0,0,.4);max-width:100%;overflow-x:auto}
+.slot{position:relative;width:56px;height:56px;flex:none;display:grid;place-items:center;border-radius:var(--s-radius);background:color-mix(in srgb,var(--s-text) 6%,transparent);cursor:pointer;transition:scale .12s}
+.slot-ico{width:36px;height:36px;display:grid;place-items:center;background:var(--pc);box-shadow:var(--s-bevel);font:700 11px var(--s-icon);color:#fff;border-radius:calc(var(--s-radius) * .7)}
+.slot-n{position:absolute;right:5px;bottom:1px;font:600 11px "JetBrains Mono";color:var(--s-text);opacity:.8}
+.slot.sel{outline:3px solid var(--s-hi);outline-offset:-1px;z-index:2;scale:1.08}
+
+/* 3 spotlight */
+.spot{width:min(580px,92vw);background:var(--s-panel);border:1px solid var(--s-border);border-radius:var(--s-radius2);box-shadow:0 30px 80px rgba(0,0,0,.5);overflow:hidden}
+.spot-in{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid color-mix(in srgb,var(--s-text) 15%,transparent);font-size:calc(var(--s-size) * .95)}
+.spot-in svg{width:18px;height:18px;opacity:.7;flex:none}
+.spot-q{flex:1;white-space:nowrap;overflow:hidden}
+.spot-q .ph{opacity:.45}
+.caret{display:inline-block;width:2px;height:1.1em;background:var(--s-hi);vertical-align:-3px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.spot-in kbd,.spot-foot kbd,.srow kbd{background:transparent;color:inherit;border-color:color-mix(in srgb,var(--s-text) 30%,transparent)}
+.spot-list{max-height:300px;overflow:auto;padding:6px}
+.srow{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:calc(var(--s-radius2) * .6);cursor:pointer}
+.srow.sel{background:color-mix(in srgb,var(--s-accent) 22%,transparent);color:var(--s-hi)}
+.sdot{width:30px;height:30px;flex:none;border-radius:calc(var(--s-radius2) * .45);display:grid;place-items:center;font:700 11px var(--s-icon);color:#fff;background:var(--pc)}
+.stext{flex:1;min-width:0;line-height:1.2}
+.stext b{display:block;font-weight:600;font-size:var(--s-size)}
+.stext small{opacity:.6;font-size:calc(var(--s-size) * .7);font-family:"JetBrains Mono"}
+.smeta{font-size:calc(var(--s-size) * .65);opacity:.6;white-space:nowrap}
+.spot-foot{display:flex;gap:16px;flex-wrap:wrap;padding:9px 16px;border-top:1px solid color-mix(in srgb,var(--s-text) 15%,transparent);font-size:calc(var(--s-size) * .65);opacity:.85}
+.empty{padding:18px;text-align:center;opacity:.6}
+
+/* 4 radial */
+.radial{width:380px;height:380px}
+@media (max-width:620px){.radial{scale:.82}}
+.rring{position:absolute;inset:44px;border-radius:50%;border:2px dashed color-mix(in srgb,var(--s-text) 28%,transparent)}
+.rpointer{position:absolute;left:50%;top:50%;width:3px;height:118px;margin-left:-1.5px;background:linear-gradient(var(--s-hi),transparent);transform-origin:50% 0;transition:rotate .18s ease-out;border-radius:2px}
+.rnode{position:absolute;width:66px;height:66px;margin:-33px 0 0 -33px;border-radius:50%;display:grid;place-items:center;cursor:pointer;
+  background:var(--s-item);border:3px solid var(--pc);
+  font:700 13px var(--s-icon);color:var(--s-text);transition:scale .15s,box-shadow .15s}
+.rnode.sel{scale:1.22;box-shadow:0 0 0 3px var(--s-hi),0 0 28px var(--pc);color:var(--s-hi)}
+.rnode em{position:absolute;top:-8px;right:-6px;font:normal 16px "VT323";background:#000;color:#fff;padding:0 5px;border-radius:4px}
+.rcenter{position:absolute;left:50%;top:50%;translate:-50% -50%;width:170px;text-align:center;line-height:1.15;pointer-events:none}
+.rcenter b{display:block;font-size:calc(var(--s-size) * 1.05);color:var(--s-hi);text-shadow:var(--s-shadow)}
+.rcenter small{font:11px "JetBrains Mono";opacity:.75}
+
+/* 5 carousel */
+.car{width:100%;height:330px;perspective:1100px}
+.car-track{position:absolute;left:50%;top:50%;transform-style:preserve-3d}
+.card3{position:absolute;left:-96px;top:-132px;width:192px;height:264px;border-radius:var(--s-radius2);background:var(--s-panel);border:2px solid var(--s-border);
+  display:flex;flex-direction:column;padding:14px;cursor:pointer;transition:transform .45s cubic-bezier(.2,.9,.3,1),opacity .3s,box-shadow .2s;text-align:center}
+.card-art{flex:1;display:grid;place-items:center;font:700 32px var(--s-icon);color:#fff;background:linear-gradient(160deg,color-mix(in srgb,var(--pc) 80%,#fff),var(--pc) 55%,color-mix(in srgb,var(--pc) 70%,#000));border-radius:calc(var(--s-radius2) * .6);margin-bottom:10px}
+.card3 b{font-size:var(--s-size);line-height:1.1}
+.card3 small{font:11px "JetBrains Mono";opacity:.65;margin-top:3px}
+.card-key{position:absolute;top:8px;left:10px;font:18px "VT323";color:#fff;text-shadow:1px 1px 0 #000}
+.card3.sel{box-shadow:0 0 0 3px var(--s-hi),0 24px 50px rgba(0,0,0,.55);color:var(--s-hi)}
+
+/* 6 glass */
+.glass{display:grid;grid-template-columns:repeat(3,150px);gap:12px}
+@media (max-width:620px){.glass{grid-template-columns:repeat(2,140px)}}
+.tile{height:112px;border-radius:var(--s-radius2);background:var(--s-panel);border:1px solid color-mix(in srgb,var(--s-text) 18%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  padding:12px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;position:relative;transition:scale .15s,box-shadow .15s}
+.tile .ic{width:36px;height:36px;border-radius:calc(var(--s-radius2) * .6);background:var(--pc);display:grid;place-items:center;font:700 12px var(--s-icon);color:#fff}
+.tile b{font-size:calc(var(--s-size) * .9);line-height:1.1;display:block}
+.tile small{font:10.5px "JetBrains Mono";opacity:.65;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.tile .tk{position:absolute;top:8px;right:10px;font:17px "VT323";opacity:.75}
+.tile.sel{scale:1.05;box-shadow:0 0 0 2px var(--s-hi),0 14px 36px rgba(0,0,0,.4);color:var(--s-hi)}
+
+/* 7 tui */
+.tui{width:min(640px,94vw);background:#0c0c0c;border:1px solid #333;border-radius:8px;overflow:hidden;font:13px/1.55 "JetBrains Mono",monospace;box-shadow:0 24px 70px rgba(0,0,0,.65)}
+.tui-bar{background:#1f1f1f;color:#bbb;padding:7px 12px;font:12px "IBM Plex Sans"}
+.tui-body{padding:12px 14px;color:var(--s-tui)}
+.tui-head{opacity:.7;margin-bottom:6px}
+.trow{white-space:pre;padding:1px 6px;cursor:pointer;overflow:hidden;text-overflow:ellipsis}
+.trow::before{content:"  "}
+.trow.sel{background:color-mix(in srgb,var(--s-tui) 22%,transparent);color:#fff}
+.trow.sel::before{content:"▶ ";color:var(--s-tui)}
+.trow .tp{opacity:.55}
+.tui-prompt{margin-top:8px;color:var(--s-tui)}
+
+/* 8 alt-tab strip */
+.as-strip{display:flex;gap:8px;padding:12px;background:var(--s-panel);border:1px solid var(--s-border);border-radius:var(--s-radius2);max-width:92vw;overflow-x:auto;box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.asc{flex:none;width:108px;padding:12px 8px 10px;border-radius:calc(var(--s-radius2) * .7);display:flex;flex-direction:column;align-items:center;gap:9px;cursor:pointer;border:2px solid transparent;position:relative}
+.asc .big{width:68px;height:68px;border-radius:calc(var(--s-radius2) * .8);background:var(--pc);display:grid;place-items:center;font:700 21px var(--s-icon);color:#fff;box-shadow:var(--s-bevel)}
+.asc b{font-size:calc(var(--s-size) * .82);font-weight:600;text-align:center;line-height:1.15}
+.asc .k{position:absolute;top:4px;left:8px;font:600 11px "JetBrains Mono";opacity:.6}
+.asc.sel{border-color:var(--s-hi);background:color-mix(in srgb,var(--s-accent) 16%,transparent);color:var(--s-hi)}
+.as-cap{margin-top:12px;font-size:calc(var(--s-size) * .78);opacity:.9;text-align:center;font-family:"JetBrains Mono";text-shadow:var(--s-shadow)}
+
+/* 9 bento */
+.bento{display:grid;grid-template-columns:repeat(4,124px);grid-auto-rows:94px;gap:10px}
+@media (max-width:620px){.bento{grid-template-columns:repeat(2,140px)}}
+.bt{border-radius:var(--s-radius2);background:var(--s-panel);border:1px solid var(--s-border);padding:12px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;position:relative;overflow:hidden;transition:box-shadow .15s}
+.bt::after{content:"";position:absolute;right:-26px;bottom:-34px;width:96px;height:96px;border-radius:50%;background:var(--pc);opacity:.4;filter:blur(20px);pointer-events:none}
+.bt.big{grid-column:span 2;grid-row:span 2}
+.bt.wide{grid-column:span 2}
+.bt b{display:block;font-size:calc(var(--s-size) * .92);font-weight:600;line-height:1.1}
+.bt.big b{font-size:calc(var(--s-size) * 1.6)}
+.bt small{display:block;font:10.5px "JetBrains Mono";opacity:.62;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bt:not(.big):not(.wide) .meta span+span{display:none}
+.bt .k{position:absolute;top:8px;right:10px;opacity:.6;font:600 12px "JetBrains Mono"}
+.bt .meta{font-size:11px;opacity:.8;display:flex;gap:10px;flex-wrap:wrap;position:relative;z-index:1}
+.bt .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--pc);margin-right:5px}
+.bt.sel{box-shadow:0 0 0 2px var(--s-hi),0 14px 34px rgba(0,0,0,.35)}
+
+/* 10 edge drawer */
+.ui-drawer{align-items:flex-start;justify-content:stretch;padding:0}
+.drw-wrap{height:100%;width:min(320px,86%);animation:drwIn .3s cubic-bezier(.2,.9,.3,1)}
+@keyframes drwIn{from{translate:-100% 0}}
+.drw{height:100%;background:var(--s-panel);border-right:1px solid var(--s-border);display:flex;flex-direction:column;box-shadow:20px 0 60px rgba(0,0,0,.35)}
+.drw-h{padding:16px 16px 10px;font:700 calc(var(--s-size) * 1.1) var(--s-title)}
+.drw-q{margin:0 12px 6px;padding:8px 10px;border-radius:calc(var(--s-radius2) * .6);background:color-mix(in srgb,var(--s-text) 8%,transparent);font-size:calc(var(--s-size) * .85)}
+.drw-list{flex:1;overflow:auto;padding:4px 8px}
+.drw-sec{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;opacity:.5;margin:10px 8px 4px;font-family:"IBM Plex Sans"}
+.drow{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:calc(var(--s-radius2) * .5);cursor:pointer;border-left:3px solid var(--pc);margin-bottom:2px}
+.drow.sel{background:color-mix(in srgb,var(--s-accent) 22%,transparent);color:var(--s-hi)}
+.drow span{flex:1;min-width:0;line-height:1.2}
+.drow b{font-weight:600;font-size:calc(var(--s-size) * .92)}
+.drow small{display:block;font:10.5px "JetBrains Mono";opacity:.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.drw-f{padding:10px 16px;font-size:11.5px;opacity:.7;border-top:1px solid color-mix(in srgb,var(--s-text) 12%,transparent);font-family:"IBM Plex Sans"}
+
+/* 11 drop-down bar */
+.ui-quake{justify-content:flex-start;padding:0}
+.qk-wrap{width:100%;animation:qkIn .3s cubic-bezier(.2,.9,.3,1)}
+@keyframes qkIn{from{translate:0 -100%}}
+.qk{width:100%;background:var(--s-panel);border-bottom:2px solid var(--s-accent);padding:16px 18px 16px;box-shadow:0 20px 60px rgba(0,0,0,.45)}
+.qk-line{font:15px "JetBrains Mono";margin-bottom:12px;white-space:nowrap;overflow:hidden}
+.qk-line .pr{color:var(--s-accent);font-weight:600}
+.qk-chips{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 4px}
+.qkc{flex:none;display:flex;align-items:center;gap:8px;padding:7px 10px 7px 12px;border-radius:calc(var(--s-radius2) * .6);border:1px solid color-mix(in srgb,var(--s-text) 20%,transparent);cursor:pointer;font-size:calc(var(--s-size) * .85);white-space:nowrap}
+.qkc i{width:9px;height:9px;border-radius:50%;background:var(--pc)}
+.qkc.sel{border-color:var(--s-hi);background:color-mix(in srgb,var(--s-accent) 22%,transparent);color:var(--s-hi)}
+.qk-prev{margin-top:10px;font:12px "JetBrains Mono";opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* 12 keymap */
+.km{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+@media (max-width:760px){.km{scale:.62}}
+.km-row{display:flex;gap:7px}
+.kc{width:62px;height:64px;border-radius:9px;background:var(--s-item);border:1px solid var(--s-border);border-top:3px solid var(--pc,var(--s-border));box-shadow:0 5px 0 rgba(0,0,0,.4);display:flex;flex-direction:column;justify-content:space-between;padding:5px 7px;cursor:pointer;transition:translate .1s,box-shadow .1s}
+.kc .kn{font:600 14px "JetBrains Mono"}
+.kc .kl{font-size:10.5px;line-height:1.1;overflow:hidden;max-height:24px;font-family:"IBM Plex Sans";font-weight:500}
+.kc.sel{translate:0 4px;box-shadow:0 1px 0 rgba(0,0,0,.4),0 0 0 2px var(--s-hi);color:var(--s-hi);background:var(--s-item-hi)}
+.kc.ghost{opacity:.22;pointer-events:none;height:48px}
+.km-cap{margin-top:16px;text-align:center;font-size:calc(var(--s-size) * 1.05);text-shadow:var(--s-shadow)}
+
+/* 13 orbit */
+.orb{width:100%;height:300px;perspective:900px}
+.orb-ring{position:absolute;left:50%;top:50%;transform-style:preserve-3d}
+.ob{position:absolute;left:-44px;top:-44px;width:88px;height:88px;border-radius:50%;display:grid;place-items:center;color:#fff;font:700 19px var(--s-icon);cursor:pointer;
+  background:radial-gradient(circle at 32% 28%,color-mix(in srgb,var(--pc) 55%,#fff),var(--pc) 45%,color-mix(in srgb,var(--pc) 55%,#000));
+  transition:transform .55s cubic-bezier(.2,.9,.3,1),opacity .4s,filter .4s,box-shadow .2s,translate .14s,rotate .12s}
+.ob.sel{box-shadow:0 0 0 3px var(--s-hi),0 0 44px var(--pc)}
+.orb-c{text-align:center;line-height:1.25;text-shadow:var(--s-shadow)}
+.orb-c b{display:block;font-size:calc(var(--s-size) * 1.15);color:var(--s-hi)}
+.orb-c small{font:11.5px "JetBrains Mono";opacity:.75}
+
+/* 14 card fan */
+.ui-fan{justify-content:flex-end;padding-bottom:6px}
+.fan-cap{text-align:center;margin-bottom:auto;padding-top:34px;text-shadow:var(--s-shadow);line-height:1.3}
+.fan-cap b{display:block;font-size:calc(var(--s-size) * 1.2);color:var(--s-hi)}
+.fan-cap small{font:11.5px "JetBrains Mono";opacity:.75}
+.fan{width:100%;height:290px}
+.fc{position:absolute;left:50%;bottom:58px;width:128px;height:178px;margin-left:-64px;border-radius:12px;background:var(--s-panel);border:1px solid var(--s-border);transform-origin:50% 280%;transition:transform .3s cubic-bezier(.2,.9,.3,1.2),box-shadow .2s;cursor:pointer;padding:9px;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.fc .art{flex:1;border-radius:8px;background:linear-gradient(160deg,color-mix(in srgb,var(--pc) 75%,#fff),var(--pc));display:grid;place-items:center;font:700 22px var(--s-icon);color:#fff;margin-bottom:8px}
+.fc b{font-size:calc(var(--s-size) * .8);text-align:center;font-weight:600}
+.fc .k{position:absolute;top:12px;left:15px;font:600 11px "JetBrains Mono";color:#fff}
+.fc.sel{box-shadow:0 0 0 2px var(--s-hi),0 24px 44px rgba(0,0,0,.5)}
+
+/* 15 tray flyout */
+.ui-fly{align-items:flex-end;justify-content:flex-end;padding:0 14px 56px 0}
+.fly{width:min(330px,90vw);background:var(--s-panel);border:1px solid var(--s-border);border-radius:var(--s-radius2);box-shadow:0 20px 60px rgba(0,0,0,.5);overflow:hidden;backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px)}
+.fly-h{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 6px;font-weight:600;font-size:calc(var(--s-size) * .9)}
+.fly-list{max-height:290px;overflow:auto;padding:4px 6px}
+.frow{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:calc(var(--s-radius2) * .55);cursor:pointer}
+.frow .ic{width:28px;height:28px;border-radius:7px;background:var(--pc);display:grid;place-items:center;font:700 10.5px var(--s-icon);color:#fff;flex:none}
+.frow span{flex:1;min-width:0;line-height:1.2}
+.frow b{font-weight:600;font-size:calc(var(--s-size) * .88)}
+.frow small{display:block;font-size:10.5px;opacity:.6}
+.frow.sel{background:color-mix(in srgb,var(--s-accent) 22%,transparent);color:var(--s-hi)}
+.fly-f{display:flex;justify-content:space-between;padding:8px 14px;font-size:11px;opacity:.75;border-top:1px solid color-mix(in srgb,var(--s-text) 12%,transparent)}
+.taskbar{position:absolute;left:0;right:0;bottom:0;height:44px;background:rgba(22,24,30,.88);backdrop-filter:blur(20px);display:flex;align-items:center;justify-content:center;gap:10px;border-top:1px solid rgba(255,255,255,.08)}
+.taskbar i{width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,.16)}
+.taskbar i.me{background:var(--s-accent);box-shadow:0 0 0 2px rgba(255,255,255,.5)}
+.taskbar .tray{position:absolute;right:14px;font:11px "IBM Plex Sans";color:#ddd}
+
+/* ── button skins: texture layer + 3D depth (shared by the stage and the Button lab) ── */
+.slot-ico,.asc .big,.kc,.qkc,.card-art,.fc .art,.sdot,.frow .ic{position:relative}
+.sk .tx{isolation:isolate;--base:var(--pc,var(--s-item))}
+.sk .mcb.tx,.sk .demo-btn.tx{--base:var(--s-item)}
+.sk .mcb.tx.sel,.sk .demo-btn.tx.sel{--base:var(--s-item-hi)}
+.sk .tx::before{content:"";position:absolute;inset:0;border-radius:inherit;background:var(--tx,none);mix-blend-mode:var(--tx-blend,normal);opacity:var(--tx-op,1);pointer-events:none;z-index:-1}
+.sk.tx-holo .tx::before{background-size:300% 300%;animation:holo 6s linear infinite}
+@keyframes holo{to{background-position:300% 0}}
+.sk .tx:not(.bt)::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:1;background:radial-gradient(circle at var(--mx,50%) var(--my,-40%),rgba(255,255,255,var(--glare,0)),transparent 58%),linear-gradient(rgba(255,255,255,var(--sheen,0)),transparent 2.5px)}
+.sk .tx:not(.ob){transition:translate .14s ease,box-shadow .14s ease,rotate .12s ease-out,scale .15s,background-color .12s}
+.sk .bc-list{padding:8px 24px 22px;margin:-8px -24px -10px;max-height:404px}
+.sk .hotbar,.sk .as-strip{padding-bottom:14px}
+.sk .qk-chips,.sk .fly-list,.sk .spot-list{padding-bottom:14px}
+.sk.tilt3d :has(> [data-k]):not(.car-track):not(.orb-ring){perspective:700px}
+.sk.d-raised .tx{--sheen:.28;box-shadow:0 2px 0 rgba(0,0,0,.18),0 10px 22px rgba(0,0,0,.35)}
+.sk.d-raised .tx.sel,.sk.d-raised .sel .tx{--sheen:.3;translate:0 -2px;box-shadow:0 0 0 2px var(--s-hi),0 16px 30px rgba(0,0,0,.45)}
+.sk.d-slab .tx{--sheen:.3;box-shadow:inset 0 -2px 0 rgba(0,0,0,.18),0 6px 0 color-mix(in srgb,var(--base) 50%,#000),0 10px 18px rgba(0,0,0,.35)}
+.sk.d-slab .tx.sel,.sk.d-slab .sel .tx{--sheen:.3;translate:0 4px;box-shadow:0 0 0 2px var(--s-hi),0 2px 0 color-mix(in srgb,var(--base) 50%,#000),0 4px 8px rgba(0,0,0,.3)}
+.sk.d-soft .tx{box-shadow:7px 7px 16px rgba(0,0,0,.45),-5px -5px 14px rgba(255,255,255,.07),inset 0 0 0 1px rgba(255,255,255,.04)}
+.sk.d-soft .tx.sel,.sk.d-soft .sel .tx{box-shadow:0 0 0 2px var(--s-hi),inset 6px 6px 12px rgba(0,0,0,.45),inset -4px -4px 10px rgba(255,255,255,.08)}
+.sk.d-chisel .tx{box-shadow:inset 3px 3px 0 rgba(255,255,255,.3),inset -3px -3px 0 rgba(0,0,0,.38),0 4px 10px rgba(0,0,0,.3)}
+.sk.d-chisel .tx.sel,.sk.d-chisel .sel .tx{box-shadow:0 0 0 2px var(--s-hi),inset -3px -3px 0 rgba(255,255,255,.22),inset 3px 3px 0 rgba(0,0,0,.38)}
+.sk.d-engrave .tx{box-shadow:inset 0 3px 8px rgba(0,0,0,.55),inset 0 -1px 0 rgba(255,255,255,.14)}
+.sk.d-engrave .tx.sel,.sk.d-engrave .sel .tx{--sheen:.25;box-shadow:0 0 0 2px var(--s-hi),0 8px 20px rgba(0,0,0,.4)}
+.sk.d-float .tx{--sheen:.35;translate:0 -3px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),0 18px 30px -8px rgba(0,0,0,.55)}
+.sk.d-float .tx.sel,.sk.d-float .sel .tx{--sheen:.4;translate:0 -9px;box-shadow:0 0 0 2px var(--s-hi),0 30px 44px -10px rgba(0,0,0,.6)}
+
+/* Button lab */
+.lab{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:12px}
+.labc{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:0;overflow:hidden;text-align:left;display:flex;flex-direction:column}
+.labc[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent)}
+.lab-demo{height:156px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:var(--lab-bg);padding:14px;perspective:600px}
+.demo-btn{position:relative;width:100%;max-width:156px;height:34px;flex:none;display:flex;align-items:center;gap:8px;padding:0 10px;background:var(--s-item);border:var(--s-bw) solid var(--s-border);border-radius:var(--s-radius);box-shadow:var(--s-bevel);color:var(--s-text);font-family:var(--s-font);font-size:min(var(--s-size),20px);text-shadow:var(--s-shadow);white-space:nowrap}
+.demo-btn.sel{background:var(--s-item-hi);color:var(--s-hi)}
+.demo-btn i{font-style:normal;opacity:.7;font-size:.8em}
+.demo-row{display:flex;gap:10px;perspective:600px}
+.demo-key{position:relative;width:38px;height:38px;border-radius:calc(var(--s-radius) + 3px);background:var(--pc);display:grid;place-items:center;color:#fff;font:700 12px var(--s-icon)}
+.labc b{display:block;padding:9px 12px 1px;font-size:13.5px}
+.labc small{display:block;padding:0 12px 11px;color:var(--muted);font-size:12px;line-height:1.4}
+
+/* open animations — individual transform props so they compose with layout transforms */
+.oa-fade .panel{animation:oaFade .3s ease-out both}
+@keyframes oaFade{from{opacity:0;scale:.95}}
+.oa-drop [data-k]{animation:oaDrop .5s cubic-bezier(.2,1.5,.4,1) both;animation-delay:calc(var(--i) * 45ms)}
+@keyframes oaDrop{from{opacity:0;translate:0 -38px}}
+.oa-flip [data-k]{animation:oaFlip .55s cubic-bezier(.2,.9,.3,1.25) both;animation-delay:calc(var(--i) * 55ms);transform-origin:50% 0}
+@keyframes oaFlip{from{opacity:0;rotate:x -95deg}}
+.oa-slide [data-k]{animation:oaSlide .42s cubic-bezier(.2,.9,.3,1) both;animation-delay:calc(var(--i) * 35ms)}
+@keyframes oaSlide{from{opacity:0;translate:-56px 0}}
+.oa-crt .panel{animation:oaCrt .5s cubic-bezier(.2,.9,.3,1) both}
+@keyframes oaCrt{0%{scale:1 .01;filter:brightness(5);opacity:.3}45%{scale:1 .04;filter:brightness(3)}100%{scale:1 1;filter:none;opacity:1}}
+.oa-portal .panel{animation:oaPortal .6s cubic-bezier(.2,.9,.3,1) both}
+@keyframes oaPortal{from{opacity:0;scale:.2;rotate:-130deg;filter:blur(12px) hue-rotate(110deg)}}
+.oa-pixel .panel{animation:oaPixel .55s steps(6) both}
+@keyframes oaPixel{from{opacity:0;filter:blur(12px) contrast(2);scale:1.08}}
+.oa-spring .panel{animation:oaSpring .6s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes oaSpring{from{opacity:0;scale:.6}}
+.oa-rise [data-k]{animation:oaRise .5s cubic-bezier(.2,.9,.3,1) both;animation-delay:calc(var(--i) * 40ms)}
+@keyframes oaRise{from{opacity:0;translate:0 40px;filter:blur(4px)}}
+.oa-depth [data-k]{animation:oaDepth .55s cubic-bezier(.2,.9,.3,1) both;animation-delay:calc(var(--i) * 50ms)}
+@keyframes oaDepth{from{opacity:0;scale:1.6;filter:blur(8px)}}
+
+/* select animations (#ov prefix outranks the open-animation rules) */
+#ov .sa-press,#ov .sa-burst{animation:saPress .28s ease}
+@keyframes saPress{40%{scale:.9}100%{scale:1.04}}
+#ov .sa-shake{animation:saShake .38s}
+@keyframes saShake{20%{translate:-7px 0}40%{translate:7px 0}60%{translate:-4px 0}80%{translate:3px 0}}
+#ov .sa-glow{animation:saGlow .48s}
+@keyframes saGlow{50%{box-shadow:0 0 0 6px var(--s-hi),0 0 46px 14px var(--pc);filter:brightness(1.45)}}
+#ov .sa-zoom{animation:saZoom .45s cubic-bezier(.5,0,.2,1) forwards;z-index:9}
+@keyframes saZoom{to{scale:1.7;opacity:0;filter:blur(3px)}}
+#ov.zooming [data-k]:not(.sa-zoom){transition:opacity .3s;opacity:.08}
+#ov .sa-break{visibility:hidden}
+#ov .sa-ripple{animation:saPress .3s ease}
+#ov .sa-fling{animation:saFling .42s cubic-bezier(.5,0,.75,0) forwards}
+@keyframes saFling{to{translate:160px 0;opacity:0}}
+.ring{position:absolute;border:3px solid var(--c);border-radius:50%;pointer-events:none;z-index:7;translate:-50% -50%;animation:ringOut .62s ease-out forwards}
+@keyframes ringOut{from{width:12px;height:12px;opacity:1}to{width:280px;height:280px;opacity:0}}
+.pt{position:absolute;width:7px;height:7px;background:var(--c);pointer-events:none;z-index:7;animation:ptFly .62s cubic-bezier(.1,.7,.3,1) forwards;box-shadow:0 0 6px var(--c)}
+@keyframes ptFly{to{translate:var(--dx) var(--dy);opacity:0;rotate:var(--r)}}
+.shard{position:absolute;pointer-events:none;z-index:7;background:var(--c);border-radius:3px;animation:shardFall .75s cubic-bezier(.4,0,.8,.6) forwards}
+@keyframes shardFall{to{translate:var(--dx) 200px;rotate:var(--r);opacity:0}}
+
+/* fake terminal after launch */
+.term{position:absolute;inset:0;z-index:6;background:#0c0c0c;display:none;flex-direction:column;font:13px/1.55 "JetBrains Mono",monospace;color:#cccccc;cursor:pointer}
+.term.show{display:flex;animation:termIn .25s ease-out}
+@keyframes termIn{from{opacity:0;scale:1.03}}
+.term-bar{height:38px;background:#202020;display:flex;align-items:flex-end;padding:0 10px;gap:6px;flex:none}
+.term-tab{background:#0c0c0c;border-top:3px solid var(--tc);padding:6px 16px;border-radius:7px 7px 0 0;font:12px "IBM Plex Sans";color:#eee}
+.term-body{padding:14px 18px;white-space:pre;overflow:hidden;flex:1}
+.term-body .c{color:#e07a52}.term-body .g{color:#8a8a8a}
+.term-note{position:absolute;bottom:10px;right:12px;font:12px "IBM Plex Sans";color:#9a9a9a;background:rgba(255,255,255,.06);padding:4px 10px;border-radius:6px}
+
+.cmdbar{margin-top:10px;display:flex;gap:10px;align-items:center;background:var(--code-bg);color:var(--code-text);border-radius:10px;padding:10px 12px}
+.cmdbar .lbl{font:11px "JetBrains Mono";color:#9d958a;white-space:nowrap;text-transform:uppercase;letter-spacing:.08em}
+.cmdbar code{flex:1;font-size:12.5px;overflow-x:auto;white-space:nowrap;scrollbar-width:thin}
+.cmdbar button,.copy{border:1px solid #3d3a35;background:#26231f;color:#efe8dd;border-radius:7px;font-size:12px;padding:4px 9px;white-space:nowrap}
+
+/* control panel */
+.ctl{position:sticky;top:70px}
+.tabs{display:flex;gap:4px;background:var(--surface-2);padding:4px;border-radius:11px;margin-bottom:12px}
+.tabs button{flex:1;border:0;background:transparent;border-radius:8px;padding:7px 4px;font-size:13px;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--text);box-shadow:var(--shadow);font-weight:600}
+.pane{display:none}.pane.on{display:block}
+.lbl2{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px}
+.lbl2:first-child{margin-top:0}
+.swatches{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.sw{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:6px;font-size:11.5px;text-align:center}
+.sw i{display:flex;height:26px;border-radius:6px;overflow:hidden;margin-bottom:4px}
+.sw i span{flex:1}
+.sw[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent)}
+.minichips{display:flex;flex-wrap:wrap;gap:6px}
+.mc{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:5px 10px;font-size:13px}
+.mc[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.row{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:14px}
+.row input[type=range]{flex:1;accent-color:var(--accent)}
+.row output{font:12px "JetBrains Mono";color:var(--muted);width:38px;text-align:right}
+.tog{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;font-size:14px;border-top:1px dashed var(--line)}
+.tog input{accent-color:var(--accent);width:18px;height:18px}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:7px 12px;font-size:13px}
+.btn.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.note{font-size:12.5px;color:var(--muted);margin-top:8px}
+
+/* editor */
+.ed{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.ed li{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px;display:grid;grid-template-columns:18px 26px 1fr auto;gap:6px 8px;align-items:center}
+.ed li.drag-over{border-color:var(--accent);border-style:dashed}
+.ed li.dragging{opacity:.4}
+.grip{cursor:grab;color:var(--muted);font-size:13px;letter-spacing:-2px;text-align:center}
+.ed input[type=color]{width:26px;height:26px;border:0;padding:0;background:none;border-radius:6px;cursor:pointer}
+.ed input[type=text],.ed select,.fld{width:100%;min-width:0;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:7px;padding:5px 8px;font:13px "IBM Plex Sans"}
+.ed .pth{font-family:"JetBrains Mono";font-size:12px}
+.ed .sub{grid-column:2 / -1;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.ed .acts{display:flex;gap:2px}
+.ed .acts button{border:0;background:transparent;color:var(--muted);width:24px;height:24px;border-radius:6px;font-size:13px}
+.ed .acts button:hover{background:var(--surface-2);color:var(--text)}
+.ed .num{font:600 12px "JetBrains Mono";color:var(--accent);text-align:center}
+.ed-other{border:1px dashed var(--line);border-radius:10px;padding:8px;margin-top:8px;font-size:13px}
+pre.json{background:var(--code-bg);color:var(--code-text);border-radius:10px;padding:12px;font-size:11.5px;max-height:260px;overflow:auto;margin:10px 0 0}
+
+/* compare table */
+.tscroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:760px}
+th,td{padding:11px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:var(--surface-2)}
+tr:last-child td{border-bottom:0}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:color-mix(in srgb,var(--accent) 5%,transparent)}
+tr.cur td{background:color-mix(in srgb,var(--accent) 9%,transparent)}
+.dots{font-family:"JetBrains Mono";letter-spacing:1px;color:var(--accent);white-space:nowrap}
+.dots s{text-decoration:none;color:var(--line)}
+td small{color:var(--muted);display:block}
+.rec{border-left:3px solid var(--accent);background:color-mix(in srgb,var(--accent) 6%,var(--surface));padding:14px 16px;border-radius:0 10px 10px 0;margin-top:16px}
+
+/* features */
+.fcol h3{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.fcol h3 .count{font:12px "JetBrains Mono";color:var(--muted);margin-left:auto}
+.feat{display:flex;gap:10px;padding:10px 0;border-top:1px dashed var(--line);cursor:pointer}
+.feat:first-of-type{border-top:0}
+.feat input{accent-color:var(--accent);width:17px;height:17px;flex:none;margin-top:3px}
+.feat b{font-weight:600;font-size:14px}
+.feat span{display:block;color:var(--muted);font-size:13px;line-height:1.45}
+.eff{font:10.5px "JetBrains Mono";padding:1px 5px;border-radius:4px;border:1px solid var(--line);color:var(--muted);margin-left:6px;vertical-align:1px}
+
+/* hotkey cards */
+.hk{position:relative;cursor:pointer}
+.hk[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent),var(--shadow)}
+.hk .keys{font-size:20px;margin:8px 0 10px;display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.hk .keys kbd{font-size:15px;padding:3px 9px}
+.pc{font-size:13px;margin:4px 0;color:var(--muted)}
+.pc b{color:var(--text);font-weight:600}
+.badge{position:absolute;top:12px;right:12px;font:11px "JetBrains Mono";padding:2px 7px;border-radius:6px}
+
+/* architecture */
+.arch{display:grid;grid-template-columns:1fr 34px 1.4fr 34px 1.2fr 34px 1.3fr;align-items:stretch;gap:0;margin-top:18px}
+.arch .box{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:13px}
+.arch .box h4{margin:0 0 6px;font:700 14px "Bricolage Grotesque"}
+.arch .box ul{margin:0;padding-left:16px;color:var(--muted)}
+.arch .arr{display:grid;place-items:center;color:var(--accent);font-size:20px}
+.arch .side{grid-column:1 / -1;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+.arch .side .box{border-style:dashed}
+@media (max-width:900px){.arch{grid-template-columns:1fr}.arch .arr{rotate:90deg;height:30px}.arch .side{grid-template-columns:1fr}}
+.codeblk{position:relative;margin-top:12px}
+.codeblk pre{background:var(--code-bg);color:var(--code-text);border-radius:12px;padding:16px;overflow:auto;font-size:12.5px;line-height:1.55;margin:0;max-height:440px}
+.codeblk .copy{position:absolute;top:10px;right:10px}
+.codeblk .cap{font:11px "JetBrains Mono";color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.08em}
+.cm{color:#8f877b}.ck{color:#e7a86b}.cs{color:#9fcf7a}
+
+/* brand */
+.names{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.nm{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 14px;text-align:left;position:relative}
+.nm b{font:800 20px "Bricolage Grotesque";letter-spacing:-.01em}
+.nm span{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+.nm .star{position:absolute;top:10px;right:12px;font-size:18px;color:var(--line)}
+.nm[aria-pressed="true"]{border-color:var(--accent)}
+.nm[aria-pressed="true"] .star{color:var(--accent)}
+.nm.taken b{text-decoration:line-through;text-decoration-color:var(--warn)}
+.logos{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-top:16px}
+.logo{border:1px solid var(--line);background:var(--surface);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.logo .art{height:150px;display:grid;place-items:center;background:repeating-conic-gradient(var(--surface-2) 0 25%,var(--surface) 0 50%) 0 0/20px 20px;gap:12px;grid-auto-flow:column}
+.logo .art svg{width:88px;height:88px;filter:drop-shadow(0 6px 10px rgba(0,0,0,.2))}
+.logo .art svg.sm{width:32px;height:32px}
+.logo .meta{padding:12px 14px;border-top:1px solid var(--line);flex:1;display:flex;flex-direction:column;gap:6px}
+.logo .meta b{font-size:14px}
+.logo .meta span{font-size:12.5px;color:var(--muted)}
+.logo .meta .btnrow{margin-top:auto}
+.logo[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent)}
+
+/* roadmap */
+.road{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;counter-reset:ph}
+@media (max-width:1000px){.road{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:620px){.road{grid-template-columns:1fr}}
+.ph{border-top:4px solid var(--accent)}
+.ph .when{font:12px "JetBrains Mono";color:var(--accent)}
+.ph h3{margin:4px 0 8px}
+.ph ul{margin:0;padding-left:18px;font-size:13.5px;color:var(--muted)}
+.ph:nth-child(1){border-top-color:var(--grass)}
+
+/* picks drawer */
+.fab{position:fixed;right:16px;bottom:16px;z-index:60;background:var(--accent);color:var(--accent-ink);border:0;border-radius:99px;padding:11px 18px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.drawer{position:fixed;right:16px;bottom:72px;z-index:60;width:min(440px,calc(100vw - 32px));max-height:min(72vh,640px);display:none;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.3)}
+.drawer.open{display:flex}
+.drawer header{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.drawer pre{margin:0;padding:14px 16px;overflow:auto;font-size:12px;line-height:1.5;white-space:pre-wrap;flex:1}
+.drawer footer{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:24px;translate:-50% 0;background:var(--text);color:var(--bg);padding:8px 16px;border-radius:9px;font-size:13px;z-index:80;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+footer.pg{padding:40px 0 90px;color:var(--muted);font-size:13px;border-top:1px solid var(--line)}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand" id="brandMark"></div>
+    <nav class="nav" aria-label="Sections">
+      <a href="#verdict"><b>01</b>Verdict</a>
+      <a href="#play"><b>02</b>Playground</a>
+      <a href="#compare"><b>03</b>Compare UIs</a>
+      <a href="#buttons"><b>04</b>Button lab</a>
+      <a href="#features"><b>05</b>Features</a>
+      <a href="#trigger"><b>06</b>Trigger</a>
+      <a href="#build"><b>07</b>Build</a>
+      <a href="#brand"><b>08</b>Name &amp; logo</a>
+      <a href="#roadmap"><b>09</b>Roadmap</a>
+    </nav>
+    <button class="iconbtn" id="themeBtn" title="Page theme">◐ Auto</button>
+  </div>
+</header>
+
+<main>
+<div class="wrap hero">
+  <div class="eyebrow">Design explorer · Claude Code project launcher · Windows 11</div>
+  <h1>One keystroke to <em>any project</em>, Claude already running.</h1>
+  <p class="lede">Press <kbd>Ctrl</kbd>+<kbd>\</kbd> anywhere, see your project list as a semi-transparent overlay, hit a number, and get a full-screen PowerShell in that folder with <code>claude</code> running. Every interface below works in the page, so you can compare them before anything gets built. What you pick is saved in this browser. Use <b>My picks</b> (bottom right) to copy your choices back to Claude.</p>
+  <div class="howto">
+    <span class="pill"><kbd>Ctrl</kbd>+<kbd>\</kbd> summon / hide</span>
+    <span class="pill"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> or mouse wheel</span>
+    <span class="pill"><kbd>1</kbd>–<kbd>9</kbd> instant open · <kbd>0</kbd> Other…</span>
+    <span class="pill"><kbd>↵</kbd> Claude · <kbd>⇧</kbd><kbd>↵</kbd> continue last · <kbd>Ctrl</kbd><kbd>↵</kbd> shell only</span>
+  </div>
+</div>
+
+<!-- 01 VERDICT -->
+<section id="verdict"><div class="wrap">
+  <div class="sec-head"><span class="sec-num">01</span><h2>What I think of the idea</h2></div>
+  <p class="sec-sub">It's worth building. It removes a step you repeat dozens of times a day (open terminal → <code>cd</code> → <code>claude</code>), and it's small enough to finish. What decides whether you keep using it is reliability: the overlay has to appear instantly on every press and never open the wrong thing.</p>
+  <div class="verdict">
+    <div class="card">
+      <h3 style="margin-bottom:10px">Why it works</h3>
+      <p><b>Muscle memory beats menus.</b> With numbers fixed to projects, <kbd>Ctrl</kbd>+<kbd>\</kbd> <kbd>1</kbd> becomes a reflex you stop thinking about. The overlay is mostly there for learning the numbers and for the "Other…" case.</p>
+      <p><b>It can grow into a project hub.</b> Once the launcher knows your projects, it can also show the last Claude session, git state, whether a session is already running, and notify you when Claude finishes.</p>
+      <p><b>The game-menu layout suits it.</b> Big stacked buttons and a numbered hotbar read well at a glance. Kept flat (no textures), they stay crisp at any scale, render instantly, and can be re-skinned from Arcade to Fluent Glass with one setting.</p>
+      <p style="margin:0"><b>My recommendation:</b> the <b>Game Menu</b> overlay with type-to-filter built in, plus <b>Hotbar</b> or <b>Alt-Tab Strip</b> as alternative layouts. Build it with <b>Tauri 2</b> (web UI, about a 5 MB app, official global-hotkey, tray and autostart plugins). Before that, spend one evening on a <b>40-line AutoHotkey v2 version</b> to find out if the habit sticks (section 07).</p>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:6px">Reliability traps to design around</h3>
+      <div class="risk"><span class="tag t-warn">HOTKEY</span><div><b><kbd>Ctrl</kbd>+<kbd>\</kbd> is "Split editor" in VS Code</b><span class="d">A global hook takes it from every app. Either keep a pass-through list (VS Code → send the key through) or pick a combination nothing else uses. Options are in section 06.</span></div></div>
+      <div class="risk"><span class="tag t-warn">ADMIN</span><div><b>Hotkeys stop working over elevated windows</b><span class="d">Windows' UIPI blocks input to a non-admin app while an admin window is focused. Start the launcher from Task Scheduler with "Run with highest privileges".</span></div></div>
+      <div class="risk"><span class="tag t-warn">SPEED</span><div><b>Cold start makes it feel slow</b><span class="d">Keep it in the tray with the window already rendered and hidden, so the hotkey only shows it (&lt;50 ms). Never spawn the process on each press.</span></div></div>
+      <div class="risk"><span class="tag t-acc">DUPES</span><div><b>Opening the same project twice</b><span class="d">Give every window a fixed title (<code>--title "RailPair" --suppressApplicationTitle</code>). If that window exists, focus it instead. <kbd>⇧</kbd>+<kbd>Alt</kbd> forces a new one.</span></div></div>
+      <div class="risk"><span class="tag t-acc">QUOTES</span><div><b><code>-d "D:\"</code> breaks the command line</b><span class="d">A trailing <code>\"</code> escapes the closing quote in Windows argument parsing. Pass <code>D:\</code> unquoted, or pass arguments as an array (which Tauri/Rust does for you).</span></div></div>
+      <div class="risk"><span class="tag t-ok">F11</span><div><b>"Full screen" vs "maximized"</b><span class="d"><code>wt --fullscreen</code> hides the tab bar and taskbar, so it looks great but is easy to lose track of. Try both in the Launch tab of the playground.</span></div></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 02 PLAYGROUND -->
+<section id="play"><div class="wrap">
+  <div class="sec-head"><span class="sec-num">02</span><h2>Playground: try every interface</h2></div>
+  <p class="sec-sub">15 layouts that all use the same keys. Button texture and 3D depth are set in the <b>Buttons</b> tab and apply to every layout. Hover over or click the stage to give it the keyboard. Choose an interface, then change the theme, motion and projects in the panel on the right; the stage updates as you go. Opening a project shows a mock terminal, and the bar underneath shows the <b>exact command</b> the real app would run.</p>
+  <div class="uichips" id="uiChips"></div>
+  <div class="play" id="playground">
+    <div>
+      <div class="stage" id="stage" tabindex="0" aria-label="Launcher preview stage">
+        <div class="wall">
+          <div class="fakewin" style="left:6%;top:9%;width:52%;height:58%"><div class="tb"></div><i style="width:60%"></i><i style="width:42%"></i><i style="width:70%"></i><i style="width:35%"></i><i style="width:55%"></i><i style="width:48%"></i></div>
+          <div class="fakewin" style="left:48%;top:36%;width:46%;height:54%;background:#262a33"><div class="tb" style="background:#323743"></div><i style="width:40%"></i><i style="width:66%"></i><i style="width:52%"></i></div>
+        </div>
+        <div class="armtag" id="armTag">hover to control</div>
+        <div class="summon" id="summon"><div>Press <kbd>Ctrl</kbd> + <kbd>\</kbd><br><small style="font-size:14px;opacity:.8">or click to summon</small></div></div>
+        <div class="ov" id="ov"></div>
+        <div class="term" id="term"></div>
+      </div>
+      <div class="cmdbar"><span class="lbl">Runs</span><code id="cmdOut"></code><button id="cmdCopy">Copy</button></div>
+    </div>
+
+    <aside class="ctl card" aria-label="Customise">
+      <div class="tabs" role="tablist">
+        <button role="tab" data-tab="look" aria-selected="true">Theme</button>
+        <button role="tab" data-tab="btns" aria-selected="false">Buttons</button>
+        <button role="tab" data-tab="motion" aria-selected="false">Motion</button>
+        <button role="tab" data-tab="proj" aria-selected="false">Projects</button>
+        <button role="tab" data-tab="launch" aria-selected="false">Launch</button>
+      </div>
+
+      <div class="pane on" data-pane="look">
+        <div class="lbl2">Vibe pack</div>
+        <div class="swatches" id="themeSw"></div>
+        <div class="lbl2">Overlay</div>
+        <div class="row"><span style="width:96px">Transparency</span><input type="range" id="alpha" min="0.15" max="0.95" step="0.01"><output id="alphaO"></output></div>
+        <div class="row"><span style="width:96px">Backdrop blur</span><input type="range" id="blur" min="0" max="24" step="1"><output id="blurO"></output></div>
+        <div class="note">A real overlay window can blur what's behind it (Windows Acrylic/Mica, or a transparent WebView2 window in Tauri). The stage fakes that with CSS <code>backdrop-filter</code>.</div>
+      </div>
+
+      <div class="pane" data-pane="btns">
+        <div class="lbl2">Texture</div>
+        <div class="minichips" id="texChips"></div>
+        <div class="row"><span style="width:96px">Strength</span><input type="range" id="texOp" min="0.2" max="1" step="0.05"><output id="texOpO"></output></div>
+        <div class="lbl2">3D depth</div>
+        <div class="minichips" id="depthChips"></div>
+        <label class="tog">Per-button 3D tilt + light glare <input type="checkbox" id="btnTilt"></label>
+        <div class="note">Textures are CSS layers, so they stay sharp at any size: no pixel art and no images to load. You can compare every option side by side in <a href="#buttons">04 Button lab</a>.</div>
+      </div>
+
+      <div class="pane" data-pane="motion">
+        <div class="lbl2">Open gesture</div>
+        <div class="minichips" id="openAnims"></div>
+        <div class="lbl2">Select gesture</div>
+        <div class="minichips" id="selAnims"></div>
+        <div class="btnrow"><button class="btn" id="replayOpen">↻ Replay open</button><button class="btn" id="testSel">✦ Test select</button></div>
+        <div class="lbl2">Extras</div>
+        <label class="tog">Whole panel tilts with the mouse <input type="checkbox" id="tilt"></label>
+        <label class="tog">Sound effects (blips &amp; click) <input type="checkbox" id="sound"></label>
+        <label class="tog">Animations on <input type="checkbox" id="motion"></label>
+        <div class="note">Mouse gestures: the <b>wheel</b> scrolls every interface. In <b>Radial</b>, pointing in a direction selects (flick and click). In <b>Carousel</b>, <b>Orbit</b> and <b>Card Fan</b>, the first click brings a project to the front and the second opens it.</div>
+      </div>
+
+      <div class="pane" data-pane="proj">
+        <div class="lbl2">Projects · drag to reorder · numbers follow the order</div>
+        <ol class="ed" id="edList"></ol>
+        <div class="ed-other">
+          <b>Other…</b> (always last, key <kbd>0</kbd>)
+          <div class="row"><span style="width:52px">Path</span><input class="fld" id="otherPath" style="font-family:'JetBrains Mono'"></div>
+          <div class="row"><span style="width:52px">Action</span>
+            <select class="fld" id="otherAction">
+              <option value="shell">Plain PowerShell there (no Claude)</option>
+              <option value="pick">Folder picker → then Claude</option>
+            </select></div>
+        </div>
+        <div class="btnrow">
+          <button class="btn pri" id="addProj">+ Add project</button>
+          <button class="btn" id="showJson">{ } config.json</button>
+          <button class="btn" id="resetProj">Reset</button>
+        </div>
+        <pre class="json" id="jsonOut" hidden></pre>
+      </div>
+
+      <div class="pane" data-pane="launch">
+        <div class="lbl2">Window</div>
+        <div class="minichips" id="winModes"></div>
+        <div class="note" id="winNote"></div>
+        <div class="lbl2">Key map in the overlay</div>
+        <div style="font-size:13.5px;line-height:2">
+          <kbd>↵</kbd> / click → <code>claude</code><br>
+          <kbd>⇧</kbd><kbd>↵</kbd> / ⇧+click / <kbd>⇧</kbd><kbd>1-9</kbd> → <code>claude --continue</code><br>
+          <kbd>Ctrl</kbd><kbd>↵</kbd> → PowerShell only<br>
+          <kbd>Alt</kbd><kbd>↵</kbd> → <code>claude --resume</code> picker <small style="color:var(--muted)">(real app)</small><br>
+          <kbd>→</kbd> → action menu: VS Code, Explorer, copy path <small style="color:var(--muted)">(real app)</small><br>
+          type letters → jump / filter · <kbd>Esc</kbd> → hide
+        </div>
+      </div>
+    </aside>
+  </div>
+</div></section>
+
+<!-- 03 COMPARE -->
+<section id="compare"><div class="wrap">
+  <div class="sec-head"><span class="sec-num">03</span><h2>Compare the interfaces</h2></div>
+  <p class="sec-sub">My scores, from 1 to 5. Click a row to load it in the playground, and use ★ to mark your favourite. "Build ease" is the inverse of effort.</p>
+  <div class="tscroll"><table>
+    <thead><tr><th>Interface</th><th>Speed</th><th>20+ projects</th><th>Mouse &amp; gestures</th><th>Wow</th><th>Build ease</th><th>Game feel</th><th>Best for</th><th>Fav</th></tr></thead>
+    <tbody id="cmpBody"></tbody>
+  </table></div>
+  <div class="rec"><b>Recommended combination:</b> use <b>Game Menu</b> as the main overlay (your idea, now flat) and add Spotlight's <i>type-to-filter</i> so it still works at 20+ projects. Make the layout a setting, because all 15 share the same keys and config: <b>Hotbar</b> and <b>Alt-Tab Strip</b> are the fastest alternatives, <b>Keymap</b> is good for the first week while you learn the numbers, and <b>Orbit</b>/<b>Card Fan</b> are for fun. Keep <b>Terminal TUI</b> as a fallback <code>cc</code> PowerShell command for when the app isn't running.</div>
+</div></section>
+
+<!-- 04 BUTTON LAB -->
+<section id="buttons"><div class="wrap">
+  <div class="sec-head"><span class="sec-num">04</span><h2>Button lab: texture &amp; 3D</h2></div>
+  <p class="sec-sub">Texture and depth are separate settings, so any texture works with any depth, and both work with every theme and layout. The samples below use the theme currently chosen in the playground. Click a card to apply it, then hover over the samples to feel the per-button tilt.</p>
+  <h3 style="margin-bottom:10px">Texture</h3>
+  <div class="lab" id="texLab"></div>
+  <h3 style="margin:26px 0 10px">3D depth</h3>
+  <div class="lab" id="depthLab"></div>
+</div></section>
+
+<!-- 05 FEATURES -->
+<section id="features"><div class="wrap">
+  <div class="sec-head"><span class="sec-num">05</span><h2>Feature menu</h2></div>
+  <p class="sec-sub">Tick what you want. The "Must" column is pre-ticked as my recommendation for v1, and you can change any of it. Effort: <span class="eff">S</span> hours · <span class="eff">M</span> a day or two · <span class="eff">L</span> a week or more.</p>
+  <div class="grid4" id="featGrid"></div>
+</div></section>
+
+<!-- 05 TRIGGER -->
+<section id="trigger"><div class="wrap">
+  <div class="sec-head"><span class="sec-num">06</span><h2>How you trigger it</h2></div>
+  <p class="sec-sub">You can enable several of these at once. My suggestion is <kbd>Ctrl</kbd>+<kbd>\</kbd> as the main trigger, with a VS Code pass-through, plus a <b>blind chord</b>: <kbd>Ctrl</kbd>+<kbd>\</kbd> then <kbd>2</kbd> within ~300 ms opens project 2 before the overlay even draws, and the overlay only appears if you pause.</p>
+  <div class="grid3" id="hkGrid"></div>
+</div></section>
+
+<!-- 06 BUILD -->
+<section id="build"><div class="wrap">
+  <div class="sec-head"><span class="sec-num">07</span><h2>How to build it</h2></div>
+  <p class="sec-sub">Approximate numbers for a resident tray app on Windows 11. ★ marks your pick. Your machine already has Node, Python, Windows Terminal and the AHK v2 installer in <code>D:\AHK\Software</code>.</p>
+  <div class="tscroll"><table>
+    <thead><tr><th>Stack</th><th>Show latency</th><th>Idle RAM</th><th>App size</th><th>Visual ceiling</th><th>Effort</th><th>Notes</th><th>Pick</th></tr></thead>
+    <tbody id="stackBody"></tbody>
+  </table></div>
+
+  <h3 style="margin-top:30px">Architecture (Tauri 2 path)</h3>
+  <div class="arch">
+    <div class="box"><h4>Triggers</h4><ul><li>Global hotkey <code>Ctrl+\</code></li><li>Tray icon click</li><li>CLI / deep link: <code>app open 3</code></li><li>2nd keyboard via AHK</li></ul></div>
+    <div class="arr">→</div>
+    <div class="box"><h4>Resident core (Rust)</h4><ul><li>global-shortcut plugin</li><li><code>config.json</code> load + watch</li><li>Window finder (focus existing)</li><li>Session indexer, git status</li><li>Single instance, autostart</li></ul></div>
+    <div class="arr">→</div>
+    <div class="box"><h4>Overlay (WebView2)</h4><ul><li>Pre-rendered, hidden</li><li>Transparent, always on top</li><li>Themes, animations, sounds</li><li>Settings editor (same window)</li></ul></div>
+    <div class="arr">→</div>
+    <div class="box"><h4>Launch</h4><ul><li><code>wt.exe -w new --fullscreen</code></li><li><code>--title --tabColor -d &lt;path&gt;</code></li><li><code>powershell -NoExit -Command claude</code></li><li>Fallback: classic <code>powershell.exe</code></li></ul></div>
+    <div class="side">
+      <div class="box"><h4>%APPDATA%\&lt;app&gt;\config.json</h4>Projects, order, colors, theme, hotkeys. Plain JSON, so you can edit it by hand and back it up with git.</div>
+      <div class="box"><h4>~\.claude\projects\ (read-only)</h4>Session transcripts per folder (<code>D--Hitachi-Live\*.jsonl</code>). Used for "last session 2h ago" and recent prompts.</div>
+      <div class="box"><h4>Claude Code hooks</h4>A <code>Stop</code> / <code>Notification</code> hook calls <code>app notify RailPair</code>, which shows a toast; clicking it focuses that window.</div>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-top:22px">
+    <div class="codeblk"><div class="cap">Phase 0 · AutoHotkey v2 · works tonight</div><button class="copy" data-copy="ahk">Copy</button><pre id="ahk"></pre></div>
+    <div>
+      <div class="codeblk"><div class="cap">Tauri 2 · launch command (Rust)</div><button class="copy" data-copy="rs">Copy</button><pre id="rs"></pre></div>
+      <div class="codeblk"><div class="cap">Tauri 2 · global hotkey toggles the overlay (JS)</div><button class="copy" data-copy="js">Copy</button><pre id="js"></pre></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 07 BRAND -->
+<section id="brand"><div class="wrap">
+  <div class="sec-head"><span class="sec-num">08</span><h2>Name &amp; logo</h2></div>
+  <p class="sec-sub">Star the names you like and add your own. The logos below are first concepts drawn as SVG. Once you've picked a name and a direction, I'll generate polished variants through OpenRouter image models using the prompt on each card, and add them here next to these.</p>
+  <div class="names" id="names"></div>
+  <div class="row" style="max-width:460px;margin-top:12px"><input class="fld" id="newName" placeholder="Your own name idea…"><button class="btn pri" id="addName">Add</button></div>
+  <div class="logos" id="logos"></div>
+</div></section>
+
+<!-- 08 ROADMAP -->
+<section id="roadmap"><div class="wrap">
+  <div class="sec-head"><span class="sec-num">09</span><h2>Roadmap</h2></div>
+  <p class="sec-sub">Each phase is something you can use day to day, so the order can change at any point.</p>
+  <div class="road">
+    <div class="card ph"><div class="when">Phase 0 · 1 evening</div><h3>Prove the habit</h3><ul><li>Install AHK v2 from <code>D:\AHK\Software</code></li><li>40-line script in section 07</li><li><kbd>Ctrl</kbd>+<kbd>\</kbd> → native menu → number → Claude</li><li>Focus an existing window instead of duplicating</li></ul></div>
+    <div class="card ph"><div class="when">Phase 1 · weekend</div><h3>MVP overlay</h3><ul><li>Tauri 2 tray app, hidden pre-rendered window</li><li>Blockcraft UI + Other…</li><li><code>config.json</code> with your 6 projects</li><li>Autostart, single instance, elevated task</li></ul></div>
+    <div class="card ph"><div class="when">Phase 2 · ~1 week</div><h3>Make it yours</h3><ul><li>Settings editor (add, reorder, color)</li><li>Vibe packs + transparency/blur</li><li>Open/select gestures + sounds</li><li>Type-to-filter, Hotbar skin</li></ul></div>
+    <div class="card ph"><div class="when">Phase 3 · ~1 week</div><h3>Project hub</h3><ul><li>Last session + recent prompts</li><li>Git branch / dirty badge</li><li>Running ● / idle ○ status</li><li>Claude hook → toast → focus</li><li>Multi-open in tabs, pre-commands</li></ul></div>
+    <div class="card ph"><div class="when">Phase 4 · polish</div><h3>Ship it</h3><ul><li>Final name + OpenRouter logo set</li><li>Installer (MSI/NSIS via Tauri)</li><li>2nd keyboard bridge (AHI)</li><li>Wow extras: 3D mode, voice</li></ul></div>
+  </div>
+</div></section>
+</main>
+
+<footer class="pg"><div class="wrap">Choices are saved in this browser only (localStorage). Use <b>My picks → Copy</b> to send them back to Claude.</div></footer>
+
+<button class="fab" id="fab">★ My picks</button>
+<div class="drawer" id="drawer" role="dialog" aria-label="My picks">
+  <header><b style="flex:1">My picks</b><button class="iconbtn" id="drawerClose">✕</button></header>
+  <pre id="picksOut"></pre>
+  <footer><button class="btn pri" id="copyPicks">Copy as text</button><button class="btn" id="resetAll">Reset everything</button></footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ───────── data ───────── */
+const DEFAULT_PROJECTS = () => [
+  {name:'RailPair',   path:'D:\\Hitachi-Live',     color:'#e0563b', mode:'claude', pre:''},
+  {name:'Hitachi CV', path:'D:\\HitachiCV',        color:'#d6334f', mode:'claude', pre:''},
+  {name:'PingPair',   path:'D:\\PingPair-PrivDev', color:'#3fa7d6', mode:'claude', pre:''},
+  {name:'My Web CV',  path:'D:\\CV-Web',           color:'#6cbf4a', mode:'claude', pre:''},
+  {name:'AI GPU',     path:'D:\\AI-GPU',           color:'#76b900', mode:'claude', pre:''},
+  {name:'CC Figure',  path:'D:\\CC Figure',        color:'#a77bf0', mode:'claude', pre:''},
+];
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const DEF = () => ({
+  projects: DEFAULT_PROJECTS(), other:{path:'D:\\', action:'shell'},
+  ui:'blockcraft', favUi:'blockcraft', theme:'arcade', openAnim:'drop', selAnim:'burst',
+  alpha:.62, blur:8, win:'fullscreen', sound:false, tilt:true, motion:!reduce,
+  tex:'gloss', depth:'slab', texOp:1, btnTilt:true,
+  hotkeys:{ctrlbs:true, chord:true}, stack:'tauri',
+  names:{}, customNames:[], logos:{}, features:null
+});
+const LS = 'ccl-explorer-v1';
+let S;
+try { S = Object.assign(DEF(), JSON.parse(localStorage.getItem(LS) || 'null') || {}); } catch (e) { S = DEF(); }
+const save = () => { try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) {} renderPicks(); };
+
+const LAST = ['2h ago','yesterday','just now','5d ago','3w ago','1h ago','4d ago','2w ago'];
+const GIT = ['main ✓','dev ↑2','main •3','feat/ui','main ✓','main •1','dev','main ✓'];
+
+const SANS = '"IBM Plex Sans",system-ui,sans-serif', DISP = '"Bricolage Grotesque",system-ui,sans-serif',
+  PIXEL = '"Press Start 2P",monospace', VT = '"VT323",monospace', MONO = '"JetBrains Mono",monospace',
+  BEVEL = 'inset 2px 2px 0 rgba(255,255,255,.22),inset -2px -3px 0 rgba(0,0,0,.35)',
+  SOFT = 'inset 0 1px 0 rgba(255,255,255,.07),0 6px 18px rgba(0,0,0,.22)', DROP = '2px 2px 0 rgba(0,0,0,.5)';
+const flat = o => Object.assign({font:SANS, title:DISP, icon:DISP, size:'16px', tsize:'20px', hint:'12.5px', radius:'10px', radius2:'14px', bw:'1px', shadow:'none', bevel:SOFT}, o);
+const THEMES = {
+  arcade:  flat({label:'Arcade (flat)', bg:'#1b1d22', item:'#6b6b6b', itemHi:'#7f89bd', panel:'rgba(36,37,42,.94)', text:'#f0f0f0', hi:'#ffffa0', accent:'#7dff7d', border:'#000', font:VT, title:PIXEL, icon:PIXEL, size:'25px', tsize:'15px', hint:'18px', radius:'0px', radius2:'2px', bw:'2px', shadow:DROP, bevel:BEVEL, tui:'#7dff7d'}),
+  stone:   flat({label:'Slate', bg:'#15171c', item:'#2a2e37', itemHi:'#3b4252', panel:'rgba(28,31,38,.94)', text:'#e8eaf0', hi:'#ffffff', accent:'#8fa3ff', border:'#3a404c', tui:'#8fa3ff'}),
+  clay:    flat({label:'Claude Clay', bg:'#1d1714', item:'#3a2c25', itemHi:'#c96442', panel:'rgba(34,26,22,.94)', text:'#f7ece4', hi:'#ffffff', accent:'#e07a52', border:'#4a372d', tui:'#e8916c'}),
+  paper:   flat({label:'Paper (light)', bg:'#efe9df', item:'#fffdf9', itemHi:'#f6dccd', panel:'rgba(255,253,249,.96)', text:'#1e1b17', hi:'#a8401f', accent:'#c96442', border:'#d9cfc1', bevel:'0 1px 2px rgba(0,0,0,.08)', tui:'#e8916c'}),
+  glass:   flat({label:'Fluent Glass', bg:'#1a2030', item:'rgba(255,255,255,.12)', itemHi:'rgba(255,255,255,.26)', panel:'rgba(30,36,50,.55)', text:'#ffffff', hi:'#ffffff', accent:'#4cc2ff', border:'rgba(255,255,255,.25)', font:'"Segoe UI Variable","Segoe UI","IBM Plex Sans",sans-serif', radius:'8px', tui:'#4cc2ff'}),
+  aurora:  flat({label:'Aurora', bg:'#0a1020', item:'rgba(255,255,255,.08)', itemHi:'rgba(124,240,197,.22)', panel:'rgba(14,20,40,.72)', text:'#eaf2ff', hi:'#ffffff', accent:'#7cf0c5', border:'rgba(160,200,255,.22)', radius:'12px', radius2:'18px', tui:'#7cf0c5',
+    grad:'radial-gradient(60% 55% at 18% 18%,rgba(124,240,197,.28),transparent),radial-gradient(55% 60% at 85% 75%,rgba(140,110,255,.32),transparent)'}),
+  nether:  flat({label:'Ember', bg:'#1a0b08', item:'#3a1712', itemHi:'#c2410c', panel:'rgba(36,14,10,.94)', text:'#fde7dc', hi:'#fff4e6', accent:'#fb923c', border:'#5a2318', tui:'#fb923c'}),
+  end:     flat({label:'Void', bg:'#0b0815', item:'#1c1630', itemHi:'#5b3fa8', panel:'rgba(20,15,36,.94)', text:'#ece6ff', hi:'#ffffff', accent:'#a78bfa', border:'#3a2d63', tui:'#c4b5fd'}),
+  ocean:   flat({label:'Lagoon', bg:'#04191d', item:'#0f3036', itemHi:'#14857a', panel:'rgba(6,34,40,.92)', text:'#dcfbf6', hi:'#ffffff', accent:'#2dd4bf', border:'#1d4e55', tui:'#5eead4'}),
+  neon:    flat({label:'Neon', bg:'#05040c', item:'#12111f', itemHi:'#1e1340', panel:'rgba(10,9,22,.92)', text:'#cfd6ff', hi:'#00f0ff', accent:'#ff2bd6', border:'#ff2bd6', font:MONO, icon:MONO, size:'15px', hint:'12px', radius:'4px', radius2:'8px', bevel:'0 0 14px rgba(255,43,214,.25)', shadow:'0 0 10px rgba(0,240,255,.45)', tui:'#00f0ff'}),
+  phosphor:flat({label:'Phosphor', bg:'#000a02', item:'#062a10', itemHi:'#0d4a1d', panel:'rgba(0,14,4,.94)', text:'#39ff6a', hi:'#c6ffd4', accent:'#39ff6a', border:'#0f5a22', font:VT, title:VT, icon:VT, size:'26px', tsize:'28px', hint:'19px', radius:'0px', radius2:'0px', bevel:'none', shadow:'0 0 8px rgba(57,255,106,.5)', tui:'#39ff6a'}),
+};
+
+const GRAIN = (f, oct, a) => `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='${f}' numOctaves='${oct}' stitchTiles='stitch'/><feColorMatrix values='.33 .33 .33 0 0 .33 .33 .33 0 0 .33 .33 .33 0 0 0 0 0 0 ${a}'/></filter><rect width='100%' height='100%' filter='url(#n)'/></svg>`)}")`;
+const TEX = {
+  none:     {label:'Flat', d:'Solid colour, nothing on top.', css:'none'},
+  gloss:    {label:'Glossy', d:'Candy shine on the top half, like an app icon.', css:'linear-gradient(180deg,rgba(255,255,255,.36),rgba(255,255,255,.08) 48%,rgba(0,0,0,.05) 52%,rgba(0,0,0,.2))'},
+  satin:    {label:'Satin sheen', d:'A soft diagonal highlight; subtle and premium.', css:'linear-gradient(115deg,rgba(255,255,255,0) 18%,rgba(255,255,255,.24) 45%,rgba(255,255,255,0) 72%),linear-gradient(180deg,rgba(255,255,255,.08),rgba(0,0,0,.14))'},
+  brushed:  {label:'Brushed metal', d:'Fine vertical hairlines with a steel gradient.', css:'repeating-linear-gradient(90deg,rgba(255,255,255,.08) 0 1px,rgba(0,0,0,.06) 1px 2px,transparent 2px 4px),linear-gradient(180deg,rgba(255,255,255,.24),rgba(0,0,0,.22))'},
+  carbon:   {label:'Carbon fibre', d:'Woven diagonal weave; sporty and dark.', css:'repeating-linear-gradient(45deg,rgba(0,0,0,.3) 0 3px,rgba(255,255,255,.05) 3px 6px),repeating-linear-gradient(-45deg,rgba(0,0,0,.22) 0 3px,rgba(255,255,255,.04) 3px 6px)'},
+  frost:    {label:'Frosted glass', d:'Milky light falloff with fine frost grain.', css:`linear-gradient(135deg,rgba(255,255,255,.32),rgba(255,255,255,.05) 55%,rgba(255,255,255,.14)),${GRAIN(.9, 2, .22)}`},
+  grain:    {label:'Film grain', d:'Smooth photographic grain (not pixels).', css:GRAIN(.8, 3, .7), blend:'overlay'},
+  stone:    {label:'Soft stone', d:'Large mottled clouds, like polished stone.', css:GRAIN(.045, 4, .85), blend:'overlay'},
+  velvet:   {label:'Velvet', d:'Deep, soft light pooling from one corner.', css:'radial-gradient(120% 90% at 30% 0%,rgba(255,255,255,.24),transparent 60%),radial-gradient(100% 100% at 100% 100%,rgba(0,0,0,.38),transparent 60%)'},
+  woven:    {label:'Woven fabric', d:'Fine cross-hatch weave, like canvas.', css:'repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 2px,transparent 2px 4px),repeating-linear-gradient(90deg,rgba(0,0,0,.14) 0 2px,transparent 2px 4px)'},
+  halftone: {label:'Halftone', d:'Comic-print dots.', css:'radial-gradient(circle,rgba(0,0,0,.32) 1.1px,transparent 1.6px) 0 0/7px 7px'},
+  blueprint:{label:'Blueprint grid', d:'Engineering grid lines.', css:'linear-gradient(rgba(255,255,255,.14) 1px,transparent 1px) 0 0/10px 10px,linear-gradient(90deg,rgba(255,255,255,.14) 1px,transparent 1px) 0 0/10px 10px'},
+  holo:     {label:'Holographic', d:'Animated rainbow foil that drifts slowly.', css:'linear-gradient(125deg,rgba(255,0,170,.5),rgba(0,220,255,.5) 25%,rgba(255,240,0,.45) 50%,rgba(140,80,255,.5) 75%,rgba(255,0,170,.5))', blend:'overlay'},
+};
+const DEPTHS = {
+  flat:   {label:'Flat', d:'Uses the theme’s own edge only.'},
+  raised: {label:'Raised', d:'Lifted off the surface with a soft shadow; rises when selected.'},
+  slab:   {label:'Slab (pressable)', d:'A solid 3D slab with a visible side; pushes down when chosen.'},
+  soft:   {label:'Soft UI', d:'Neumorphic: moulded from the surface; sinks in when chosen.'},
+  chisel: {label:'Chiseled', d:'Hard bevelled edges that flip when pressed.'},
+  engrave:{label:'Engraved', d:'Carved into the surface; pops out when chosen.'},
+  float:  {label:'Floating', d:'Hovers above a long shadow; floats higher when chosen.'},
+};
+function skinVars(el, tex, depth, extra = '') {
+  const T = TEX[tex] || TEX.none;
+  el.style.setProperty('--tx', T.css);
+  el.style.setProperty('--tx-blend', T.blend || 'normal');
+  el.style.setProperty('--tx-op', S.texOp);
+  el.classList.remove(...[...el.classList].filter(c => /^(d-|tx-holo$|tilt3d$)/.test(c)));
+  el.classList.add('sk', 'd-' + depth, ...(tex === 'holo' ? ['tx-holo'] : []), ...(extra ? [extra] : []));
+}
+
+const OPEN_ANIMS = {fade:'Fade', drop:'Drop in', flip:'3D flip', slide:'Slide', rise:'Rise + blur', depth:'Fly from depth', spring:'Spring pop', crt:'CRT on', portal:'Portal', pixel:'Pixel resolve'};
+const SEL_ANIMS  = {press:'Press', burst:'Particle burst', ripple:'Ripple rings', break:'Shatter', glow:'Glow', zoom:'Zoom through', fling:'Fling away', shake:'Shake'};
+const SEL_DUR = {press:280, burst:520, ripple:520, break:620, glow:480, zoom:440, fling:420, shake:380};
+
+function hexA(hex, a) {
+  if (!hex.startsWith('#')) return hex;
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`;
+}
+function initials(name) {
+  const caps = (name.match(/[A-Z0-9]/g) || []);
+  if (caps.length >= 2) return caps.slice(0, 2).join('');
+  const w = name.trim().split(/\s+/);
+  return (w.length > 1 ? w[0][0] + w[1][0] : name.slice(0, 2)).toUpperCase();
+}
+
+/* ───────── items / filtering ───────── */
+const cur = {sel:0, open:true, busy:false, q:'', term:false, armed:false};
+function items() {
+  return [
+    ...S.projects.map((p, i) => ({...p, idx:i, key: i < 9 ? String(i + 1) : '', last: LAST[i % LAST.length], git: GIT[i % GIT.length]})),
+    {name:'Other…', path:S.other.path, color:'#8d8d8d', other:true, idx:S.projects.length, key:'0', last:'', git:''}
+  ];
+}
+function fuzzy(q, s) {
+  q = q.toLowerCase(); s = s.toLowerCase();
+  let j = 0, score = 0, last = -2;
+  for (let i = 0; i < s.length && j < q.length; i++) {
+    if (s[i] === q[j]) { score += (i === last + 1) ? 3 : 1; if (i === 0 || ' -_\\'.includes(s[i - 1])) score += 2; last = i; j++; }
+  }
+  return j === q.length ? score : -1;
+}
+function visible() {
+  const all = items();
+  if (!cur.q || !UIS[S.ui].filter) return all;
+  return all.map(it => ({it, s: Math.max(fuzzy(cur.q, it.name), fuzzy(cur.q, it.path) - 1)}))
+    .filter(x => x.s >= 0).sort((a, b) => b.s - a.s).map(x => x.it);
+}
+
+/* ───────── interfaces ───────── */
+const HINT_V = '↑↓ choose · 1–9 jump · ↵ Claude · ⇧↵ continue · Ctrl↵ shell · Esc';
+const UIS = {
+  blockcraft:{label:'Game Menu', sub:'stacked buttons · your idea', axis:'v', filter:true, best:'Your concept; daily driver', sc:[5,4,3,4,4,5], render(L, sel) {
+    return `<div class="ui"><div class="panel">
+      <div class="bc-title">${cur.q ? 'Search: ' + esc(cur.q) + '<span class="caret"></span>' : 'Select Project'}</div>
+      <div class="bc-list list">${L.map((it, k) => `${it.other && k ? '<div class="bc-sep"></div>' : ''}<button class="mcb tx" data-k="${k}" style="--i:${k};--pc:${it.color}">
+        <span class="mcb-key">${it.key || '·'}</span><span class="mcb-name">${esc(it.name)}</span>
+        <span class="mcb-meta">${it.other ? (S.other.action === 'pick' ? 'pick folder' : 'shell in ' + esc(it.path)) : esc(it.last)}</span></button>`).join('')}</div>
+      <div class="hint">${HINT_V}<br>type to filter</div></div></div>`;
+  }},
+  hotbar:{label:'Hotbar', sub:'slots 1–9 · scroll wheel', axis:'h', filter:false, best:'Fastest muscle memory, ≤ 9 projects', sc:[5,2,4,4,4,5], render(L) {
+    return `<div class="ui ui-hot"><div class="panel" style="display:flex;flex-direction:column;align-items:center;max-width:100%">
+      <div class="hot-tip" id="hotTip"></div><div class="hot-path" id="hotPath"></div>
+      <div class="hotbar list">${L.map((it, k) => `<div class="slot" data-k="${k}" style="--i:${k};--pc:${it.color}"><span class="slot-ico tx">${it.other ? '…' : esc(initials(it.name))}</span><span class="slot-n">${it.key}</span></div>`).join('')}</div>
+      <div class="hint">1–9 · ← → or wheel · ↵ open · ⇧↵ continue</div></div></div>`;
+  }, update(L, sel) {
+    const it = L[sel]; if (!it) return;
+    const t = $('#hotTip'), p = $('#hotPath');
+    t.textContent = it.name; p.textContent = it.other ? (S.other.action === 'pick' ? 'pick a folder…' : 'shell in ' + it.path) : it.path;
+    [t, p].forEach(e => { e.classList.remove('flash'); void e.offsetWidth; e.classList.add('flash'); });
+  }},
+  spotlight:{label:'Spotlight', sub:'type to filter · Raycast-like', axis:'v', filter:true, best:'Many projects, keyboard purists', sc:[5,5,3,3,4,1], render(L, sel) {
+    return `<div class="ui"><div class="panel spot">
+      <div class="spot-in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <span class="spot-q">${cur.q ? esc(cur.q) : '<span class="ph">Search projects…</span>'}<span class="caret"></span></span><kbd>Ctrl \\</kbd></div>
+      <div class="spot-list list">${L.length ? L.map((it, k) => `<div class="srow" data-k="${k}" style="--i:${k};--pc:${it.color}">
+        <span class="sdot tx">${it.other ? '…' : esc(initials(it.name))}</span>
+        <span class="stext"><b>${esc(it.name)}</b><small>${esc(it.other ? (S.other.action === 'pick' ? 'folder picker → claude' : it.path + '  · shell only') : it.path)}</small></span>
+        <span class="smeta">${esc(it.last)}</span><kbd>${it.key}</kbd></div>`).join('') : '<div class="empty">No match · Esc clears</div>'}</div>
+      <div class="spot-foot"><span><kbd>↵</kbd> Claude</span><span><kbd>⇧↵</kbd> Continue</span><span><kbd>Ctrl↵</kbd> Shell</span><span><kbd>Esc</kbd> ${cur.q ? 'clear' : 'close'}</span></div>
+    </div></div>`;
+  }},
+  radial:{label:'Radial', sub:'point in a direction & click', axis:'both', filter:false, best:'Mouse-first, gesture lovers', sc:[4,2,5,4,3,2], render(L) {
+    const n = L.length, R = 142;
+    return `<div class="ui"><div class="panel radial"><div class="rring"></div><div class="rpointer" id="rPtr"></div>
+      ${L.map((it, k) => { const a = -Math.PI / 2 + k * 2 * Math.PI / n;
+        return `<div class="rnode tx" data-k="${k}" data-a="${a}" style="--i:${k};--pc:${it.color};left:calc(50% + ${(Math.cos(a) * R).toFixed(1)}px);top:calc(50% + ${(Math.sin(a) * R).toFixed(1)}px)">${it.other ? '…' : esc(initials(it.name))}<em>${it.key}</em></div>`; }).join('')}
+      <div class="rcenter"><b id="rName"></b><small id="rPath"></small></div></div>
+      <div class="hint">point the mouse · arrows · 1–9 · ↵ / click</div></div>`;
+  }, update(L, sel) {
+    const it = L[sel]; if (!it) return;
+    $('#rName').textContent = it.name; $('#rPath').textContent = it.path;
+    const node = $(`#ov [data-k="${sel}"]`);
+    if (node) $('#rPtr').style.rotate = (parseFloat(node.dataset.a) * 180 / Math.PI - 90) + 'deg';
+  }},
+  carousel:{label:'Carousel 3D', sub:'cover-flow cards', axis:'h', filter:false, noHover:true, best:'Show-off mode, big previews', sc:[3,3,4,5,3,2], render(L) {
+    return `<div class="ui"><div class="panel car"><div class="car-track">${L.map((it, k) => `<div class="card3" data-k="${k}" style="--i:${k};--pc:${it.color}">
+      <span class="card-key">${it.key}</span><div class="card-art tx">${it.other ? '…' : esc(initials(it.name))}</div><b>${esc(it.name)}</b><small>${esc(it.path)}</small></div>`).join('')}</div></div>
+      <div class="hint">← → · wheel · 1–9 · ↵ open</div></div>`;
+  }, update(L, sel) {
+    $$('#ov .card3').forEach((c, k) => {
+      const o = k - sel, a = Math.abs(o);
+      c.style.transform = `translateX(${o * 150}px) translateZ(${-a * 150}px) rotateY(${o === 0 ? 0 : (o < 0 ? 42 : -42)}deg)`;
+      c.style.zIndex = 100 - a; c.style.opacity = a > 3 ? 0 : 1 - a * .14;
+    });
+  }},
+  glass:{label:'Glass Grid', sub:'Windows 11 tiles', axis:'grid', cols:3, filter:false, best:'Feels native to Windows', sc:[4,3,4,3,4,1], render(L) {
+    return `<div class="ui"><div class="panel glass">${L.map((it, k) => `<div class="tile tx" data-k="${k}" style="--i:${k};--pc:${it.color}">
+      <span class="tk">${it.key}</span><span class="ic">${it.other ? '…' : esc(initials(it.name))}</span>
+      <span><b>${esc(it.name)}</b><small>${esc(it.path)}</small></span></div>`).join('')}</div>
+      <div class="hint">arrows move in 2D · 1–9 · ↵ open</div></div>`;
+  }},
+  tui:{label:'Terminal TUI', sub:'a `cc` command inside PowerShell', axis:'v', filter:true, best:'Zero-install fallback', sc:[4,4,1,2,5,2], render(L) {
+    const w = Math.max(...items().map(i => i.name.length)) + 2;
+    return `<div class="ui"><div class="panel tui"><div class="tui-bar">Windows PowerShell</div><div class="tui-body">
+      <div class="tui-head">PS C:\\Users\\you&gt; cc</div>
+      <div class="list" style="max-height:290px;overflow:auto">${L.map((it, k) => `<div class="trow" data-k="${k}" style="--i:${k}">[${it.key}] ${esc(it.name.padEnd(w))}<span class="tp">${esc(it.path)}</span></div>`).join('') || '<div class="trow">  no match</div>'}</div>
+      <div class="tui-prompt">${L.length}/${items().length} ❯ ${esc(cur.q)}<span class="caret"></span></div></div></div>
+      <div class="hint">a PowerShell function + PSReadLine, no app needed</div></div>`;
+  }},
+  switcher:{label:'Alt-Tab Strip', sub:'big icons, like Alt+Tab', axis:'h', filter:false, best:'Feels familiar on day one', sc:[5,3,4,3,5,2], render(L) {
+    return `<div class="ui"><div class="panel as-strip list">${L.map((it, k) => `<div class="asc" data-k="${k}" style="--i:${k};--pc:${it.color}">
+      <span class="k">${it.key}</span><span class="big tx">${ic(it)}</span><b>${esc(it.name)}</b></div>`).join('')}</div>
+      <div class="as-cap" id="asCap"></div><div class="hint">← → · wheel · 1–9 · ↵ open</div></div>`;
+  }, update(L, sel) {
+    const it = L[sel]; if (!it) return;
+    $('#asCap').innerHTML = `${esc(it.path)} <span style="opacity:.6">· ${esc(it.other ? 'plain shell' : it.last + ' · ⎇ ' + it.git)}</span>`;
+  }},
+  bento:{label:'Bento', sub:'pinned get bigger tiles', axis:'both', filter:false, best:'At-a-glance status board', sc:[4,3,4,4,3,1], render(L) {
+    return `<div class="ui"><div class="panel bento">${L.map((it, k) => `<div class="bt tx ${k === 0 ? 'big' : k === 1 ? 'wide' : ''}" data-k="${k}" style="--i:${k};--pc:${it.color}">
+      <span class="k">${it.key}</span><span><b>${esc(it.name)}</b><small>${esc(it.path)}</small></span>
+      <span class="meta">${it.other ? '<span>plain shell</span>' : `<span><i class="dot"></i>${esc(it.last)}</span><span>⎇ ${esc(it.git)}</span>`}</span></div>`).join('')}</div>
+      <div class="hint">1st = most used, 2nd = runner-up · arrows · 1–9 · ↵</div></div>`;
+  }},
+  drawer:{label:'Edge Drawer', sub:'slides in from the screen edge', axis:'v', filter:true, best:'Out of the way; hot-edge trigger', sc:[4,5,4,3,4,1], render(L) {
+    const rows = L.map((it, k) => `${!cur.q && k === 0 ? '<div class="drw-sec">Pinned</div>' : ''}${!cur.q && k === 3 && !it.other ? '<div class="drw-sec">Projects</div>' : ''}${it.other ? '<div class="drw-sec">More</div>' : ''}<div class="drow" data-k="${k}" style="--i:${k};--pc:${it.color}">
+      <span><b>${esc(it.name)}</b><small>${esc(it.other ? it.path + ' · shell' : it.path + ' · ' + it.last)}</small></span><kbd>${it.key}</kbd></div>`).join('');
+    return `<div class="ui ui-drawer"><div class="drw-wrap"><div class="panel flat drw"><div class="drw-h">Projects</div>
+      <div class="drw-q">${cur.q ? esc(cur.q) : '<span style="opacity:.5">Type to filter…</span>'}<span class="caret"></span></div>
+      <div class="drw-list list">${rows || '<div class="empty">No match</div>'}</div>
+      <div class="drw-f">↑↓ · 1–9 · ↵ Claude · ⇧↵ continue · Esc</div></div></div></div>`;
+  }},
+  quake:{label:'Drop-down Bar', sub:'Quake-style, slides from the top', axis:'h', filter:true, best:'Type-first terminal people', sc:[5,4,3,3,4,1], render(L) {
+    return `<div class="ui ui-quake"><div class="qk-wrap"><div class="panel flat qk">
+      <div class="qk-line"><span class="pr">claude ❯</span> ${esc(cur.q)}<span class="caret"></span> <span style="opacity:.45">${cur.q ? '' : 'type a project name, or press 1–9'}</span></div>
+      <div class="qk-chips list">${L.map((it, k) => `<div class="qkc tx" data-k="${k}" style="--i:${k};--pc:${it.color}"><i></i>${esc(it.name)}<kbd>${it.key}</kbd></div>`).join('') || '<span style="opacity:.6">no match</span>'}</div>
+      <div class="qk-prev" id="qkPrev"></div></div></div></div>`;
+  }, update(L, sel) {
+    const it = L[sel], p = $('#qkPrev');
+    if (p) p.textContent = it ? `→ ${it.path}${it.other ? '   (plain shell)' : '   ·  last session ' + it.last + '  ·  ⎇ ' + it.git}` : '';
+  }},
+  keymap:{label:'Keymap', sub:'your number row, labelled', axis:'h', filter:false, best:'Learning the numbers fast', sc:[5,2,3,4,4,3], render(L) {
+    const byKey = {}; L.forEach((it, k) => { if (it.key) byKey[it.key] = k; });
+    const key = d => { const k = byKey[d]; if (k === undefined) return `<div class="kc ghost"><span class="kn">${d}</span></div>`;
+      const it = L[k]; return `<div class="kc tx" data-k="${k}" style="--i:${k};--pc:${it.color}"><span class="kn">${d}</span><span class="kl">${esc(it.name)}</span></div>`; };
+    const ghost = s => [...s].map(c => `<div class="kc ghost"><span class="kn">${c}</span></div>`).join('');
+    return `<div class="ui"><div class="panel km"><div class="km-row">${[...'1234567890'].map(key).join('')}</div>
+      <div class="km-row" style="margin-left:32px">${ghost('QWERTYUIOP')}</div><div class="km-row" style="margin-left:50px">${ghost('ASDFGHJKL')}</div></div>
+      <div class="km-cap" id="kmCap"></div><div class="hint">press the key you see · ← → · ↵</div></div>`;
+  }, update(L, sel) {
+    const it = L[sel]; if (!it) return;
+    $('#kmCap').innerHTML = `<b>${esc(it.name)}</b> <span style="opacity:.7;font-family:'JetBrains Mono';font-size:.75em">${esc(it.path)}</span>`;
+  }},
+  orbit:{label:'Orbit 3D', sub:'projects orbit; the front one is chosen', axis:'h', filter:false, noHover:true, best:'Showpiece with depth', sc:[3,2,4,5,3,2], render(L) {
+    return `<div class="ui"><div class="panel orb"><div class="orb-ring">${L.map((it, k) => `<div class="ob tx" data-k="${k}" style="--i:${k};--pc:${it.color}">${ic(it)}</div>`).join('')}</div></div>
+      <div class="orb-c" id="orbC"></div><div class="hint">← → spin · wheel · 1–9 · ↵</div></div>`;
+  }, update(L, sel) {
+    const n = L.length;
+    $$('#ov .ob').forEach((el, k) => {
+      let o = ((k - sel) % n + n) % n; if (o > n / 2) o -= n;
+      const a = o / n * Math.PI * 2, c = Math.cos(a);
+      el.style.transform = `translate3d(${(Math.sin(a) * 200).toFixed(1)}px,${((1 - c) * -36).toFixed(1)}px,${((c - 1) * 150).toFixed(1)}px)`;
+      el.style.zIndex = Math.round(c * 100) + 100;
+      el.style.opacity = (.3 + .7 * (c + 1) / 2).toFixed(2);
+      el.style.filter = c < .3 ? `blur(${((1 - c) * 1.3).toFixed(1)}px)` : 'none';
+    });
+    const it = L[sel]; $('#orbC').innerHTML = it ? `<b>${esc(it.name)}</b><small>${esc(it.path)}</small>` : '';
+  }},
+  fan:{label:'Card Fan', sub:'a hand of cards; chosen one lifts', axis:'h', filter:false, noHover:true, best:'Playful and tactile', sc:[4,2,4,5,4,3], render(L) {
+    return `<div class="ui ui-fan"><div class="fan-cap" id="fanCap"></div><div class="panel fan">${L.map((it, k) => `<div class="fc" data-k="${k}" style="--i:${k};--pc:${it.color}">
+      <span class="k">${it.key}</span><div class="art tx">${ic(it)}</div><b>${esc(it.name)}</b></div>`).join('')}</div>
+      <div class="hint">← → · wheel · click a card · 1–9 · ↵</div></div>`;
+  }, update(L, sel) {
+    const n = L.length;
+    $$('#ov .fc').forEach((el, k) => { el.style.transform = `rotate(${((k - (n - 1) / 2) * 8).toFixed(1)}deg) translateY(${k === sel ? -48 : 0}px)`; el.style.zIndex = k === sel ? 50 : k; });
+    const it = L[sel]; $('#fanCap').innerHTML = it ? `<b>${esc(it.name)}</b><small>${esc(it.path)}</small>` : '';
+  }},
+  flyout:{label:'Tray Flyout', sub:'Win 11 flyout above the tray', axis:'v', filter:true, best:'Low-key, native, mouse-friendly', sc:[4,4,4,2,5,1], render(L) {
+    return `<div class="ui ui-fly"><div class="panel flat fly"><div class="fly-h"><span>Open project</span><span style="opacity:.6;font-size:.82em;font-weight:400">${cur.q ? '“' + esc(cur.q) + '”' : 'type to filter'}</span></div>
+      <div class="fly-list list">${L.map((it, k) => `<div class="frow" data-k="${k}" style="--i:${k};--pc:${it.color}"><span class="ic tx">${ic(it)}</span>
+        <span><b>${esc(it.name)}</b><small>${esc(it.other ? it.path + ' · shell' : it.last + ' · ⎇ ' + it.git)}</small></span><kbd>${it.key}</kbd></div>`).join('') || '<div class="empty">No match</div>'}</div>
+      <div class="fly-f"><span>⚙ Settings</span><span>↵ Claude · ⇧↵ continue</span></div></div>
+      <div class="taskbar"><i></i><i></i><i class="me"></i><i></i><i></i><span class="tray">ENG&nbsp;&nbsp;12:04</span></div></div>`;
+  }},
+};
+function ic(it) { return it.other ? '…' : esc(initials(it.name)); }
+
+/* ───────── stage rendering ───────── */
+const stage = $('#stage'), ov = $('#ov'), term = $('#term');
+function applyTheme() {
+  const t = THEMES[S.theme] || THEMES.arcade, st = stage.style;
+  const map = {'--s-item':t.item, '--s-item-hi':t.itemHi, '--s-panel':t.panel, '--s-text':t.text, '--s-hi':t.hi, '--s-accent':t.accent,
+    '--s-border':t.border, '--s-font':t.font, '--s-title':t.title, '--s-size':t.size, '--s-hint':t.hint, '--s-radius':t.radius,
+    '--s-radius2':t.radius2, '--s-blur':S.blur + 'px', '--s-tui':t.tui, '--s-icon':t.icon, '--s-tsize':t.tsize,
+    '--s-shadow':t.shadow, '--s-bevel':t.bevel, '--s-bw':t.bw};
+  for (const k in map) st.setProperty(k, map[k]);
+  ov.style.backgroundColor = hexA(t.bg, S.alpha);
+  ov.style.backgroundImage = t.grad || 'none';
+  skinVars(ov, S.tex, S.depth, S.btnTilt && S.motion ? 'tilt3d' : '');
+  const lab = $('#buttons');
+  if (lab) { for (const k in map) lab.style.setProperty(k, map[k]); lab.style.setProperty('--lab-bg', (t.grad ? t.grad + ',' : '') + t.bg); }
+}
+function renderStage(anim = true) {
+  applyTheme();
+  const L = visible();
+  if (cur.sel >= L.length) cur.sel = Math.max(0, L.length - 1);
+  ov.innerHTML = UIS[S.ui].render(L, cur.sel);
+  ov.classList.remove('zooming');
+  if (anim && S.motion) ov.firstElementChild.classList.add('oa-' + S.openAnim);
+  updSel(false);
+}
+function updSel(sound = true) {
+  const L = visible(), ui = UIS[S.ui];
+  $$('#ov [data-k]').forEach(el => el.classList.toggle('sel', +el.dataset.k === cur.sel));
+  if (ui.update) ui.update(L, cur.sel);
+  const el = $(`#ov [data-k="${cur.sel}"]`), list = el && el.closest('.list');
+  if (el && list) {
+    if (list.scrollHeight > list.clientHeight) {
+      if (el.offsetTop < list.scrollTop) list.scrollTop = el.offsetTop - 6;
+      else if (el.offsetTop + el.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = el.offsetTop + el.offsetHeight - list.clientHeight + 6;
+    }
+    if (list.scrollWidth > list.clientWidth) list.scrollLeft = el.offsetLeft - list.clientWidth / 2 + el.offsetWidth / 2;
+  }
+  if (sound) blip(520 + cur.sel * 40, .035);
+  showCmd(L[cur.sel], 'claude');
+}
+function setSel(k) { const n = visible().length; if (!n) return; k = (k + n) % n; if (k !== cur.sel) { cur.sel = k; updSel(); } }
+function move(d) { setSel(cur.sel + d); }
+
+/* ───────── command builder ───────── */
+function dirArg(p) {
+  let d = p.trim();
+  if (/^[A-Za-z]:\\?$/.test(d)) return d.replace(/\\?$/, '\\');   // drive root: never quote (trailing \" bug)
+  d = d.replace(/\\+$/, '');
+  return /\s/.test(d) ? `"${d}"` : d;
+}
+function wtCmd(it, mode) {
+  if (!it) return '';
+  const win = {fullscreen:'--fullscreen', maximized:'--maximized', normal:''}[S.win];
+  if (it.other && mode !== 'pick' && S.other.action === 'pick') mode = 'pick';
+  if (it.other && mode !== 'pick') mode = 'shell';
+  if (mode === 'pick') return `# folder picker opens at ${it.path}, then: wt.exe -w new ${win} -d "<picked>" powershell -NoExit -Command claude`.replace(/\s+/g, ' ');
+  const title = it.other ? 'Shell' : it.name;
+  let run = 'claude' + (mode === 'continue' ? ' --continue' : '');
+  if (it.pre && mode !== 'shell') run = `${it.pre}; ${run}`;
+  const inner = mode === 'shell' ? 'powershell -NoExit' : `powershell -NoExit -Command ${/[;\s]/.test(run) ? `"${run}"` : run}`;
+  return ['wt.exe -w new', win, `--title "${title}" --suppressApplicationTitle`, it.other ? '' : `--tabColor "${it.color}"`, `-d ${dirArg(it.path)}`, inner].filter(Boolean).join(' ');
+}
+function showCmd(it, mode) { $('#cmdOut').textContent = wtCmd(it, it && it.mode && !it.other && mode === 'claude' ? it.mode : mode); }
+
+/* ───────── sound ───────── */
+let AC;
+function blip(f = 600, d = .04, type = 'square', vol = .035) {
+  if (!S.sound) return;
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type; o.frequency.value = f; g.gain.setValueAtTime(vol, AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(.0001, AC.currentTime + d);
+    o.connect(g).connect(AC.destination); o.start(); o.stop(AC.currentTime + d + .02);
+  } catch (e) {}
+}
+
+/* ───────── select effects ───────── */
+function relRect(el) { const a = el.getBoundingClientRect(), b = stage.getBoundingClientRect(); return {x:a.left - b.left, y:a.top - b.top, w:a.width, h:a.height}; }
+function particles(el, color) {
+  const r = relRect(el), cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+  for (let i = 0; i < 26; i++) {
+    const p = document.createElement('div'), ang = Math.random() * Math.PI * 2, dist = 60 + Math.random() * 130;
+    p.className = 'pt';
+    p.style.cssText = `left:${cx}px;top:${cy}px;--c:${i % 3 ? color : '#fff'};--dx:${Math.cos(ang) * dist}px;--dy:${Math.sin(ang) * dist}px;--r:${Math.random() * 360}deg`;
+    stage.appendChild(p); setTimeout(() => p.remove(), 700);
+  }
+}
+function shards(el, color) {
+  const r = relRect(el), cs = getComputedStyle(el), c = cs.backgroundColor !== 'rgba(0, 0, 0, 0)' ? cs.backgroundColor : color;
+  const cols = 4, rows = 2, w = r.w / cols, h = r.h / rows;
+  for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
+    const s = document.createElement('div'); s.className = 'shard';
+    s.style.cssText = `left:${r.x + i * w}px;top:${r.y + j * h}px;width:${w}px;height:${h}px;--c:${c};--dx:${(i - cols / 2 + .5) * 40 + (Math.random() * 30 - 15)}px;--r:${Math.random() * 120 - 60}deg;animation-delay:${Math.random() * 80}ms`;
+    stage.appendChild(s); setTimeout(() => s.remove(), 900);
+  }
+}
+function ripple(el, color) {
+  const r = relRect(el);
+  [0, 140].forEach(d => { const g = document.createElement('div'); g.className = 'ring';
+    g.style.cssText = `left:${r.x + r.w / 2}px;top:${r.y + r.h / 2}px;--c:${color};animation-delay:${d}ms`;
+    stage.appendChild(g); setTimeout(() => g.remove(), 800 + d); });
+}
+function playSel(el, color, done) {
+  if (!S.motion || !el) { done && done(); return; }
+  const a = S.selAnim;
+  el.classList.remove('sa-' + a); void el.offsetWidth; el.classList.add('sa-' + a);
+  if (a === 'burst') particles(el, color);
+  if (a === 'break') shards(el, color);
+  if (a === 'ripple') ripple(el, color);
+  if (a === 'zoom') ov.classList.add('zooming');
+  blip(a === 'break' ? 180 : 880, .09, a === 'break' ? 'sawtooth' : 'square', .05);
+  setTimeout(() => { done ? done() : (el.classList.remove('sa-' + a), ov.classList.remove('zooming')); }, SEL_DUR[a] || 300);
+}
+
+/* ───────── open / close / launch ───────── */
+let termTimer;
+function openOverlay() {
+  clearTimeout(termTimer); term.classList.remove('show'); cur.term = false;
+  cur.open = true; cur.busy = false; cur.q = '';
+  ov.classList.remove('hidden', 'closing'); $('#summon').classList.remove('show');
+  renderStage(true); blip(440, .06, 'triangle', .05);
+}
+function closeOverlay(cb) {
+  if (!cur.open) { cb && cb(); return; }
+  ov.classList.add('closing');
+  setTimeout(() => {
+    ov.classList.add('hidden'); ov.classList.remove('closing'); cur.open = false;
+    if (cb) cb(); else $('#summon').classList.add('show');
+  }, S.motion ? 180 : 0);
+}
+function summon() {
+  const r = stage.getBoundingClientRect();
+  if (r.bottom < 80 || r.top > innerHeight - 120) stage.scrollIntoView({block:'center'});
+  arm(true);
+  if (cur.term || !cur.open) openOverlay(); else closeOverlay();
+}
+function launch(k, mode) {
+  const L = visible(), it = L[k];
+  if (!it || cur.busy || !cur.open) return;
+  if (!it.other && mode === 'claude' && it.mode) mode = it.mode;
+  if (it.other) mode = S.other.action === 'pick' ? 'pick' : 'shell';
+  cur.sel = k; updSel(false); cur.busy = true;
+  showCmd(it, mode);
+  playSel($(`#ov [data-k="${k}"]`), it.color, () => closeOverlay(() => showTerm(it, mode)));
+}
+function showTerm(it, mode) {
+  cur.term = true;
+  const shownPath = mode === 'pick' ? 'D:\\Projects\\NewThing' : (/^[A-Za-z]:\\?$/.test(it.path) ? it.path.replace(/\\?$/, '\\') : it.path.replace(/\\+$/, ''));
+  const title = it.other && mode !== 'pick' ? 'Windows PowerShell' : (mode === 'pick' ? 'NewThing' : it.name);
+  const lines = ['<span class="g">Windows PowerShell</span>', '<span class="g">Copyright (C) Microsoft Corporation. All rights reserved.</span>', ''];
+  if (mode === 'pick') lines.push(`<span class="g"># folder picker → you chose ${esc(shownPath)}</span>`);
+  if (mode === 'shell') lines.push(`PS ${esc(shownPath)}&gt; <span class="caret" style="background:#ccc"></span>`);
+  else {
+    if (it.pre) lines.push(`PS ${esc(shownPath)}&gt; ${esc(it.pre)}`);
+    lines.push(`PS ${esc(shownPath)}&gt; claude${mode === 'continue' ? ' --continue' : ''}`, '');
+    const W = 46, row = s => '│ ' + s.padEnd(W - 4) + ' │';
+    lines.push('<span class="c">╭' + '─'.repeat(W - 2) + '╮</span>',
+      '<span class="c">' + esc(row('✻ Welcome to Claude Code')) + '</span>',
+      '<span class="c">' + esc(row('')) + '</span>',
+      '<span class="c">' + esc(row('  cwd: ' + shownPath)) + '</span>',
+      '<span class="c">╰' + '─'.repeat(W - 2) + '╯</span>', '');
+    if (mode === 'continue') lines.push('<span class="g">  ⎿ Resumed the most recent conversation in this folder</span>', '');
+    lines.push('&gt; <span class="caret" style="background:#ccc"></span>');
+  }
+  term.style.setProperty('--tc', it.other ? '#777' : it.color);
+  term.innerHTML = `<div class="term-bar"><div class="term-tab">${esc(title)}</div></div><div class="term-body"></div>
+    <div class="term-note">${S.win === 'fullscreen' ? 'full screen (F11)' : S.win} · mock · click, Esc or Ctrl+\\ to go back</div>`;
+  term.classList.add('show');
+  const body = $('.term-body', term); let i = 0;
+  (function add() { if (!cur.term) return; body.innerHTML = lines.slice(0, ++i).join('\n'); if (i < lines.length) setTimeout(add, S.motion ? 55 : 0); })();
+  termTimer = setTimeout(() => { if (cur.term) openOverlay(); }, 4200);
+}
+
+/* ───────── input ───────── */
+function arm(on) { cur.armed = on; stage.classList.toggle('armed', on); $('#armTag').textContent = on ? 'keyboard → stage' : 'hover to control'; }
+stage.addEventListener('pointerenter', () => arm(true));
+document.addEventListener('pointerdown', e => { if (!e.target.closest('#playground')) arm(false); });
+stage.addEventListener('click', e => {
+  if (cur.term) { openOverlay(); return; }
+  if (!cur.open) { openOverlay(); return; }
+  const it = e.target.closest('[data-k]');
+  if (it) {
+    const k = +it.dataset.k;
+    if (UIS[S.ui].noHover && k !== cur.sel) { setSel(k); return; }   // 3D layouts: first click brings it to the front
+    launch(k, e.shiftKey ? 'continue' : (e.ctrlKey ? 'shell' : 'claude'));
+  }
+  else if (e.target === ov || e.target.classList.contains('ui')) closeOverlay();
+});
+ov.addEventListener('mouseover', e => {
+  if (S.ui === 'radial' || UIS[S.ui].noHover || cur.busy) return;
+  const it = e.target.closest('[data-k]');
+  if (it && +it.dataset.k !== cur.sel) { cur.sel = +it.dataset.k; updSel(); }
+});
+let wheelT = 0;
+ov.addEventListener('wheel', e => {
+  e.preventDefault();
+  const now = performance.now(); if (now - wheelT < 70 || cur.busy) return; wheelT = now;
+  move((e.deltaY || e.deltaX) > 0 ? 1 : -1);
+}, {passive:false});
+stage.addEventListener('mousemove', e => {
+  const r = stage.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width - .5, ny = (e.clientY - r.top) / r.height - .5;
+  stage.style.setProperty('--rx', S.tilt && S.motion ? (-ny * 9).toFixed(2) + 'deg' : '0deg');
+  stage.style.setProperty('--ry', S.tilt && S.motion ? (nx * 12).toFixed(2) + 'deg' : '0deg');
+  if (S.ui === 'radial' && cur.open && !cur.busy) {
+    const p = $('#ov .radial'); if (!p) return;
+    const pr = p.getBoundingClientRect(), dx = e.clientX - (pr.left + pr.width / 2), dy = e.clientY - (pr.top + pr.height / 2);
+    if (Math.hypot(dx, dy) < 40) return;
+    const n = visible().length, a = Math.atan2(dy, dx) + Math.PI / 2;
+    setSel(Math.round(((a + Math.PI * 2) % (Math.PI * 2)) / (Math.PI * 2 / n)) % n);
+  }
+});
+let tiltEl = null;
+function untilt() { if (tiltEl) { tiltEl.style.rotate = ''; tiltEl.style.setProperty('--glare', '0'); tiltEl = null; } }
+function tiltMove(e) {
+  const root = e.currentTarget, on = root === ov ? S.btnTilt : true;
+  if (!on || !S.motion || cur.busy) { untilt(); return; }
+  const el = e.target.closest(root === ov ? '[data-k]' : '.tx');
+  if (el !== tiltEl) untilt();
+  if (!el) return;
+  const r = el.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width - .5, ny = (e.clientY - r.top) / r.height - .5;
+  const mag = Math.min(18, 1800 / Math.max(r.width, r.height)) * Math.min(1, Math.hypot(nx, ny) * 1.6);
+  el.style.rotate = `${(-ny).toFixed(3)} ${nx.toFixed(3)} 0 ${mag.toFixed(1)}deg`;
+  el.style.setProperty('--mx', ((nx + .5) * 100).toFixed(0) + '%');
+  el.style.setProperty('--my', ((ny + .5) * 100).toFixed(0) + '%');
+  el.style.setProperty('--glare', '.3');
+  tiltEl = el;
+}
+ov.addEventListener('mousemove', tiltMove);
+ov.addEventListener('mouseleave', untilt);
+stage.addEventListener('mouseleave', () => { stage.style.setProperty('--rx', '0deg'); stage.style.setProperty('--ry', '0deg'); });
+
+document.addEventListener('keydown', e => {
+  const ae = document.activeElement;
+  const typing = ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName);
+  if (e.ctrlKey && (e.code === 'Backslash' || e.key === '\\' || e.code === 'IntlBackslash')) { e.preventDefault(); summon(); return; }
+  if (typing || !cur.armed) return;
+  if (cur.term) { if (['Escape', 'Enter', ' '].includes(e.key)) { e.preventDefault(); openOverlay(); } return; }
+  if (!cur.open) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openOverlay(); } return; }
+  if (cur.busy) { e.preventDefault(); return; }
+  const ui = UIS[S.ui], L = visible(), cols = ui.cols || 1;
+  const mode = e.shiftKey ? 'continue' : (e.ctrlKey ? 'shell' : 'claude');
+  const dm = /^(?:Digit|Numpad)(\d)$/.exec(e.code);
+  let handled = true;
+  if (e.key === 'ArrowDown') move(ui.axis === 'grid' ? cols : 1);
+  else if (e.key === 'ArrowUp') move(ui.axis === 'grid' ? -cols : -1);
+  else if (e.key === 'ArrowRight') move(1);
+  else if (e.key === 'ArrowLeft') move(-1);
+  else if (e.key === 'Home') setSel(0);
+  else if (e.key === 'End') setSel(L.length - 1);
+  else if (e.key === 'Enter') launch(cur.sel, mode);
+  else if (e.key === 'Escape') { if (cur.q) { cur.q = ''; cur.sel = 0; renderStage(false); } else closeOverlay(); }
+  else if (e.key === 'Backspace' && ui.filter && cur.q) { cur.q = cur.q.slice(0, -1); cur.sel = 0; renderStage(false); }
+  else if (dm && !(ui.filter && cur.q) && !e.ctrlKey && !e.altKey) {
+    const all = items(), d = +dm[1], target = d === 0 ? all[all.length - 1] : all[d - 1];
+    if (target && (d === 0 || !target.other)) { const k = L.findIndex(x => x.idx === target.idx); if (k >= 0) launch(k, mode); }
+  }
+  else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey && e.key !== ' ') {
+    if (ui.filter) { cur.q += e.key; cur.sel = 0; renderStage(false); blip(700, .02); }
+    else { const n = L.length, ch = e.key.toLowerCase();
+      for (let s = 1; s <= n; s++) { const k = (cur.sel + s) % n; if (L[k].name.toLowerCase().startsWith(ch)) { setSel(k); break; } } }
+  }
+  else handled = false;
+  if (handled) e.preventDefault();
+});
+$('#summon').addEventListener('click', e => { e.stopPropagation(); openOverlay(); });
+
+/* ───────── controls ───────── */
+function pressed(nodes, pred) { nodes.forEach(n => n.setAttribute('aria-pressed', pred(n))); }
+function renderChips() {
+  $('#uiChips').innerHTML = Object.entries(UIS).map(([k, u]) =>
+    `<button class="chip" data-ui="${k}" aria-pressed="${S.ui === k}">${u.label}${S.favUi === k ? '<span class="fav">★</span>' : ''}<small>${u.sub}</small></button>`).join('');
+}
+$('#uiChips').addEventListener('click', e => {
+  const b = e.target.closest('[data-ui]'); if (!b) return;
+  S.ui = b.dataset.ui; cur.q = ''; cur.sel = 0; save(); renderChips(); renderCompare();
+  if (!cur.open || cur.term) openOverlay(); else renderStage(true);
+});
+$$('.tabs button').forEach(b => b.addEventListener('click', () => {
+  $$('.tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
+  $$('.pane').forEach(p => p.classList.toggle('on', p.dataset.pane === b.dataset.tab));
+}));
+$('#themeSw').innerHTML = Object.entries(THEMES).map(([k, t]) =>
+  `<button class="sw" data-theme="${k}"><i><span style="background:${t.bg}"></span><span style="background:${t.item}"></span><span style="background:${t.itemHi}"></span><span style="background:${t.hi}"></span></i>${t.label}</button>`).join('');
+$('#themeSw').addEventListener('click', e => { const b = e.target.closest('[data-theme]'); if (!b) return; S.theme = b.dataset.theme; save(); syncControls(); renderStage(true); });
+$('#openAnims').innerHTML = Object.entries(OPEN_ANIMS).map(([k, v]) => `<button class="mc" data-oa="${k}">${v}</button>`).join('');
+$('#selAnims').innerHTML = Object.entries(SEL_ANIMS).map(([k, v]) => `<button class="mc" data-sa="${k}">${v}</button>`).join('');
+$('#openAnims').addEventListener('click', e => { const b = e.target.closest('[data-oa]'); if (!b) return; S.openAnim = b.dataset.oa; save(); syncControls(); openOverlay(); });
+$('#selAnims').addEventListener('click', e => { const b = e.target.closest('[data-sa]'); if (!b) return; S.selAnim = b.dataset.sa; save(); syncControls(); testSel(); });
+function testSel() { if (!cur.open || cur.term) openOverlay(); const L = visible(), el = $(`#ov [data-k="${cur.sel}"]`); if (el) setTimeout(() => playSel(el, L[cur.sel].color, null), 30); }
+$('#replayOpen').addEventListener('click', openOverlay);
+$('#testSel').addEventListener('click', testSel);
+const WIN = {fullscreen:['Full screen', 'Like F11: no tab bar, no taskbar. Most immersive; leave with F11.'], maximized:['Maximized', 'Keeps the tab bar and taskbar. Easier to switch between several Claude sessions.'], normal:['Normal', 'Uses the window size from your Windows Terminal settings.']};
+$('#winModes').innerHTML = Object.entries(WIN).map(([k, v]) => `<button class="mc" data-win="${k}">${v[0]}</button>`).join('');
+$('#winModes').addEventListener('click', e => { const b = e.target.closest('[data-win]'); if (!b) return; S.win = b.dataset.win; save(); syncControls(); updSel(false); });
+['alpha', 'blur'].forEach(id => $('#' + id).addEventListener('input', e => { S[id] = +e.target.value; syncControls(); applyTheme(); save(); }));
+['tilt', 'sound', 'motion'].forEach(id => $('#' + id).addEventListener('change', e => { S[id] = e.target.checked; save(); if (id === 'sound' && S.sound) blip(660, .08); }));
+function syncControls() {
+  pressed($$('#themeSw .sw'), n => n.dataset.theme === S.theme);
+  pressed($$('#openAnims .mc'), n => n.dataset.oa === S.openAnim);
+  pressed($$('#selAnims .mc'), n => n.dataset.sa === S.selAnim);
+  pressed($$('#winModes .mc'), n => n.dataset.win === S.win);
+  pressed($$('#texChips .mc'), n => n.dataset.tex === S.tex);
+  pressed($$('#depthChips .mc'), n => n.dataset.depth === S.depth);
+  $('#texOp').value = S.texOp; $('#texOpO').value = Math.round(S.texOp * 100) + '%';
+  $('#btnTilt').checked = S.btnTilt;
+  $('#winNote').textContent = WIN[S.win][1];
+  $('#alpha').value = S.alpha; $('#alphaO').value = Math.round(S.alpha * 100) + '%';
+  $('#blur').value = S.blur; $('#blurO').value = S.blur + 'px';
+  $('#tilt').checked = S.tilt; $('#sound').checked = S.sound; $('#motion').checked = S.motion;
+  $('#otherPath').value = S.other.path; $('#otherAction').value = S.other.action;
+}
+$('#cmdCopy').addEventListener('click', () => copy($('#cmdOut').textContent));
+$('#texChips').innerHTML = Object.entries(TEX).map(([k, v]) => `<button class="mc" data-tex="${k}">${v.label}</button>`).join('');
+$('#depthChips').innerHTML = Object.entries(DEPTHS).map(([k, v]) => `<button class="mc" data-depth="${k}">${v.label}</button>`).join('');
+function setSkin(tex, depth) { if (tex) S.tex = tex; if (depth) S.depth = depth; save(); syncControls(); applyTheme(); renderLab(); }
+$('#texChips').addEventListener('click', e => { const b = e.target.closest('[data-tex]'); if (b) setSkin(b.dataset.tex); });
+$('#depthChips').addEventListener('click', e => { const b = e.target.closest('[data-depth]'); if (b) setSkin(null, b.dataset.depth); });
+$('#texOp').addEventListener('input', e => { S.texOp = +e.target.value; save(); syncControls(); applyTheme(); renderLab(); });
+$('#btnTilt').addEventListener('change', e => { S.btnTilt = e.target.checked; save(); applyTheme(); });
+
+/* ───────── button lab ───────── */
+function labCard(kind, key, item) {
+  const tex = kind === 'tex' ? key : S.tex, depth = kind === 'depth' ? key : S.depth, on = kind === 'tex' ? S.tex === key : S.depth === key;
+  const P = S.projects, fallback = ['#e0563b', '#d6334f', '#3fa7d6'];
+  return `<button class="labc" data-${kind}="${key}" aria-pressed="${on}">
+    <div class="lab-demo" data-skin="${tex}|${depth}">
+      <span class="demo-btn tx"><i>1</i>${esc(P[0] ? P[0].name : 'RailPair')}</span>
+      <span class="demo-btn tx sel"><i>2</i>${esc(P[1] ? P[1].name : 'Hitachi CV')}</span>
+      <span class="demo-row">${[0, 1, 2].map(i => `<span class="demo-key tx ${i === 1 ? 'sel' : ''}" style="--pc:${P[i] ? P[i].color : fallback[i]}">${esc(P[i] ? initials(P[i].name) : String(i + 1))}</span>`).join('')}</span>
+    </div><b>${item.label}${on ? ' ✓' : ''}</b><small>${item.d}</small></button>`;
+}
+function renderLab() {
+  $('#texLab').innerHTML = Object.entries(TEX).map(([k, v]) => labCard('tex', k, v)).join('');
+  $('#depthLab').innerHTML = Object.entries(DEPTHS).map(([k, v]) => labCard('depth', k, v)).join('');
+  $$('#buttons .lab-demo').forEach(d => { const [t, dp] = d.dataset.skin.split('|'); skinVars(d, t, dp); });
+}
+['#texLab', '#depthLab'].forEach(id => {
+  const g = $(id);
+  g.addEventListener('click', e => { const c = e.target.closest('.labc'); if (!c) return; setSkin(c.dataset.tex, c.dataset.depth); toast('Applied to the playground'); });
+  g.addEventListener('mousemove', e => { const d = e.target.closest('.lab-demo'); if (!d) { untilt(); return; } tiltMove({currentTarget:d, target:e.target, clientX:e.clientX, clientY:e.clientY}); });
+  g.addEventListener('mouseleave', untilt);
+});
+
+/* ───────── project editor ───────── */
+let dragI = null;
+function renderEditor() {
+  $('#edList').innerHTML = S.projects.map((p, i) => `<li draggable="true" data-i="${i}">
+    <span class="grip" title="Drag">⋮⋮</span><span class="num">${i < 9 ? i + 1 : '–'}</span>
+    <input type="text" data-f="name" value="${esc(p.name)}" aria-label="Shown name">
+    <span class="acts"><button data-act="up" title="Up">↑</button><button data-act="down" title="Down">↓</button><button data-act="del" title="Remove">✕</button></span>
+    <span class="sub" style="grid-column:2 / -1;display:grid;grid-template-columns:26px 1fr;gap:6px 8px">
+      <input type="color" data-f="color" value="${esc(p.color)}" aria-label="Color">
+      <input type="text" class="pth" data-f="path" value="${esc(p.path)}" aria-label="Path">
+      <span></span>
+      <span style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <select data-f="mode" aria-label="Default action"><option value="claude">↵ = claude</option><option value="continue">↵ = claude --continue</option><option value="shell">↵ = shell only</option></select>
+        <input type="text" data-f="pre" value="${esc(p.pre)}" placeholder="pre-command (opt.)" aria-label="Pre-command" style="font-family:'JetBrains Mono';font-size:11.5px">
+      </span>
+    </span></li>`).join('');
+  $$('#edList select').forEach((s, i) => s.value = S.projects[i].mode || 'claude');
+  if (!$('#jsonOut').hidden) $('#jsonOut').textContent = configJson();
+}
+const edList = $('#edList');
+edList.addEventListener('input', e => {
+  const li = e.target.closest('li'), f = e.target.dataset.f; if (!li || !f) return;
+  S.projects[+li.dataset.i][f] = e.target.value; save(); renderStage(false);
+  if (!$('#jsonOut').hidden) $('#jsonOut').textContent = configJson();
+});
+edList.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const i = +b.closest('li').dataset.i, P = S.projects;
+  if (b.dataset.act === 'del') P.splice(i, 1);
+  if (b.dataset.act === 'up' && i > 0) [P[i - 1], P[i]] = [P[i], P[i - 1]];
+  if (b.dataset.act === 'down' && i < P.length - 1) [P[i + 1], P[i]] = [P[i], P[i + 1]];
+  save(); renderEditor(); renderStage(false);
+});
+edList.addEventListener('dragstart', e => { const li = e.target.closest('li'); if (!li) return; dragI = +li.dataset.i; li.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+edList.addEventListener('dragend', () => $$('#edList li').forEach(l => l.classList.remove('dragging', 'drag-over')));
+edList.addEventListener('dragover', e => { e.preventDefault(); const li = e.target.closest('li'); $$('#edList li').forEach(l => l.classList.toggle('drag-over', l === li)); });
+edList.addEventListener('drop', e => {
+  e.preventDefault(); const li = e.target.closest('li'); if (!li || dragI === null) return;
+  const to = +li.dataset.i, [m] = S.projects.splice(dragI, 1); S.projects.splice(to, 0, m); dragI = null;
+  save(); renderEditor(); renderStage(true);
+});
+$('#addProj').addEventListener('click', () => {
+  const hues = ['#f2a541', '#2ec4b6', '#ff6b9a', '#8ac926', '#4d96ff', '#c77dff'];
+  S.projects.push({name:'New project', path:'D:\\', color:hues[S.projects.length % hues.length], mode:'claude', pre:''});
+  save(); renderEditor(); renderStage(false);
+  const inp = $$('#edList input[data-f="name"]').pop(); inp && (inp.focus(), inp.select());
+});
+$('#resetProj').addEventListener('click', () => { S.projects = DEFAULT_PROJECTS(); S.other = {path:'D:\\', action:'shell'}; save(); syncControls(); renderEditor(); renderStage(true); });
+$('#otherPath').addEventListener('input', e => { S.other.path = e.target.value; save(); renderStage(false); });
+$('#otherAction').addEventListener('change', e => { S.other.action = e.target.value; save(); renderStage(false); });
+function configJson() {
+  return JSON.stringify({
+    hotkey:'Ctrl+\\', blindChord:true, ui:S.ui, theme:S.theme, opacity:S.alpha, blur:S.blur,
+    animations:{open:S.openAnim, select:S.selAnim, tilt:S.tilt, sound:S.sound, enabled:S.motion},
+    buttons:{texture:S.tex, depth:S.depth, strength:S.texOp, tilt3d:S.btnTilt},
+    window:S.win, terminal:'wt', shell:'powershell',
+    projects:S.projects.map(p => ({name:p.name, path:p.path, color:p.color, enter:p.mode || 'claude', ...(p.pre ? {pre:p.pre} : {})})),
+    other:{path:S.other.path, action:S.other.action}
+  }, null, 2);
+}
+$('#showJson').addEventListener('click', () => { const j = $('#jsonOut'); j.hidden = !j.hidden; j.textContent = configJson(); });
+
+/* ───────── compare table ───────── */
+const dots = n => `<span class="dots">${'●'.repeat(n)}<s>${'●'.repeat(5 - n)}</s></span>`;
+function renderCompare() {
+  $('#cmpBody').innerHTML = Object.entries(UIS).map(([k, u]) => `<tr data-ui="${k}" class="${S.ui === k ? 'cur' : ''}">
+    <td><b>${u.label}</b><small>${u.sub}</small></td>${u.sc.map(dots).map(d => `<td>${d}</td>`).join('')}
+    <td><small style="color:var(--text)">${u.best}</small></td>
+    <td><button class="iconbtn" data-fav="${k}" aria-pressed="${S.favUi === k}" title="Mark favourite">${S.favUi === k ? '★' : '☆'}</button></td></tr>`).join('');
+}
+$('#cmpBody').addEventListener('click', e => {
+  const f = e.target.closest('[data-fav]');
+  if (f) { S.favUi = f.dataset.fav; save(); renderCompare(); renderChips(); return; }
+  const tr = e.target.closest('tr'); if (!tr) return;
+  S.ui = tr.dataset.ui; cur.q = ''; cur.sel = 0; save(); renderChips(); renderCompare(); openOverlay();
+  $('#play').scrollIntoView({behavior: S.motion ? 'smooth' : 'auto'});
+});
+
+/* ───────── features ───────── */
+const FEATS = {
+  Must:[
+    ['resident','Resident tray process, pre-rendered window','The hotkey only shows a hidden window, so it appears in under 50 ms. No cold starts.','S'],
+    ['numbers','1–9 instant open, 0 = Other…','A number opens the project straight away with no Enter. Order is set in the editor.','S'],
+    ['focus','Focus instead of duplicate','If a "RailPair" window already exists, bring it to the front. ⇧Alt+↵ forces a new one.','S'],
+    ['mods','Modifier actions','↵ claude · ⇧↵ --continue · Ctrl↵ shell · Alt↵ --resume picker.','S'],
+    ['other','Other… entry','Plain PowerShell in D:\\, or a folder picker followed by Claude (setting).','S'],
+    ['health','Missing-path check','A project whose folder is gone is greyed out with a ⚠ instead of failing silently.','S'],
+    ['json','config.json + hot reload','Human-editable, easy to back up, and the app reloads it when you save.','S'],
+    ['autostart','Autostart, single instance, elevated','Runs via Task Scheduler with highest privileges so it works over admin windows.','S'],
+  ],
+  Should:[
+    ['editor','Settings editor','Add, rename, reorder by drag, color, icon, default action. Same window as the overlay.','M'],
+    ['filter','Type-to-filter','Fuzzy search on name and path; the numbers keep working.','S'],
+    ['chord','Blind chord','Ctrl+\\ then a digit within ~300 ms opens without drawing the overlay.','S'],
+    ['sessions','Session intel','Reads ~\\.claude\\projects\\D--Hitachi-Live\\*.jsonl → "last session 2h ago · 14 sessions · last prompt…".','M'],
+    ['git','Git badge','Branch name, dirty file count, ahead/behind.','M'],
+    ['pre','Pre-commands & env per project','e.g. activate a venv/conda env for AI GPU, git pull, set env vars before claude.','S'],
+    ['flags','Per-project Claude flags','Model, permission mode, and auto-naming the session (claude -n "RailPair").','S'],
+    ['tabcolor','Terminal styling per project','wt --tabColor and --colorScheme from the project color, so you can see which window is which.','S'],
+    ['skins','Button skins','13 textures × 7 depth styles + per-button 3D tilt, independent of theme and layout.','M'],
+    ['themes','Vibe packs + opacity/blur','The 8 packs in the playground, plus a custom accent picker.','M'],
+    ['anims','Open/select gestures + reduce motion','Respects the Windows "animation effects" setting.','M'],
+  ],
+  Could:[
+    ['multi','Multi-open','Space marks several projects; ↵ opens them as tabs or split panes in one window.','S'],
+    ['groups','Groups / pages','Work (Hitachi) / Personal; Tab switches. Useful past 9 projects.','S'],
+    ['discover','Auto-discover','Scan D:\\ for folders with .git or CLAUDE.md and offer to add them.','S'],
+    ['actions','Action menu (→)','Open in VS Code, Explorer, CLAUDE.md, GitHub repo, copy path.','S'],
+    ['status','Running / idle status','● when a Claude window for that project is open.','M'],
+    ['notify','Done toasts','A Claude Code Stop/Notification hook shows "RailPair finished"; clicking it focuses that window.','M'],
+    ['kb2','2nd keyboard / macro pad','One key per project via AutoHotInterception (already set up in D:\\AHK).','M'],
+    ['stats','Usage stats','Time and opens per project per week.','M'],
+  ],
+  Wow:[
+    ['sound','Sound pack','Soft retro clicks and pops, toggleable.','S'],
+    ['layouts','Layout switcher','All 15 layouts share keys and config; change layout without re-learning anything.','S'],
+    ['voxel','3D voxel mode','A Three.js island with one block per project: mine a block to open it.','L'],
+    ['voice','Voice open','Hold the hotkey and say "open RailPair".','L'],
+    ['phone','Phone / Stream Deck remote','A local HTTP endpoint so another device can open a project.','L'],
+    ['sync','Config sync','Keep config.json in a git repo or OneDrive and use it across PCs.','S'],
+  ],
+};
+if (!S.features) { S.features = {}; FEATS.Must.forEach(f => S.features[f[0]] = true); }
+const TAGC = {Must:'t-ok', Should:'t-acc', Could:'t-warn', Wow:'t-acc'};
+function renderFeatures() {
+  $('#featGrid').innerHTML = Object.entries(FEATS).map(([tag, list]) => `<div class="card fcol">
+    <h3><span class="tag ${TAGC[tag]}" style="font:600 11px 'JetBrains Mono';padding:2px 7px;border-radius:6px">${tag.toUpperCase()}</span><span class="count">${list.filter(f => S.features[f[0]]).length}/${list.length}</span></h3>
+    ${list.map(([id, t, d, e]) => `<label class="feat"><input type="checkbox" data-feat="${id}" ${S.features[id] ? 'checked' : ''}><span><b>${t}</b><span class="eff">${e}</span><span>${d}</span></span></label>`).join('')}</div>`).join('');
+}
+$('#featGrid').addEventListener('change', e => { const id = e.target.dataset.feat; if (!id) return; S.features[id] = e.target.checked; save(); renderFeatures(); });
+
+/* ───────── hotkeys ───────── */
+const HK = [
+  ['ctrlbs','Ctrl + \\ (your pick)',['Ctrl','\\'],'Rec.','One hand, easy to remember, and nothing global uses it.','VS Code uses it for "Split editor". Fix with a per-app pass-through list.'],
+  ['chord','Blind chord',['Ctrl','\\','→','2'],'Rec.','Fastest possible: opens before the overlay draws.','Needs a short timer (~300 ms) and a setting to adjust it.'],
+  ['dbl','Double-tap Right Ctrl',['RCtrl','RCtrl'],'','No conflicts anywhere; feels like Spotlight.','Takes slightly longer; needs a low-level hook (AHK makes this easy).'],
+  ['caps','CapsLock as Hyper',['Caps','Space'],'','CapsLock is wasted anyway; no conflicts.','Changes what CapsLock does (tap can still toggle).'],
+  ['kb2','2nd keyboard / macro pad',['F13','…','F24'],'You have it','One physical key per project, no conflicts. Your D:\\AHK has the AutoHotInterception setup.','Extra hardware; the Interception driver needs admin to install.'],
+  ['mouse','Mouse side button / hot corner',['XButton2'],'','Pairs with the Radial UI: hold, flick, release.','Easy to trigger by accident; better as an extra than the main trigger.'],
+  ['taskbar','Taskbar pin + Win+N',['Win','5'],'Zero code','Built into Windows: pin the launcher in slot 5 and press Win+5.','Opens the app window; no global hook, so no blind chord.'],
+  ['pt','PowerToys Command Palette',['Win','Alt','Space'],'','Lives inside a launcher you may already use.','An extension rather than a standalone app, so no Minecraft look.'],
+  ['tray','Tray icon click',['🖱'],'Always','Discoverable fallback; also where settings live.','Slowest option.'],
+];
+if (!S.hotkeys) S.hotkeys = {ctrlbs:true, chord:true};
+function renderHK() {
+  $('#hkGrid').innerHTML = HK.map(([id, t, keys, badge, pro, con]) => `<div class="card hk" data-hk="${id}" aria-pressed="${!!S.hotkeys[id]}" role="button" tabindex="0">
+    ${badge ? `<span class="badge t-acc">${badge}</span>` : ''}<h3>${t}</h3>
+    <div class="keys">${keys.map(k => k === '→' || k === '…' ? `<span style="color:var(--muted)">${k}</span>` : `<kbd>${esc(k)}</kbd>`).join('')}</div>
+    <div class="pc"><b>+</b> ${pro}</div><div class="pc"><b>−</b> ${con}</div>
+    <div class="note" style="margin-top:10px">${S.hotkeys[id] ? '✓ enabled in my picks' : 'click to enable'}</div></div>`).join('');
+}
+$('#hkGrid').addEventListener('click', e => { const c = e.target.closest('[data-hk]'); if (!c) return; S.hotkeys[c.dataset.hk] = !S.hotkeys[c.dataset.hk]; save(); renderHK(); });
+$('#hkGrid').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.dataset.hk) { e.preventDefault(); e.target.click(); } });
+
+/* ───────── stacks ───────── */
+const STACKS = [
+  ['ahk','AutoHotkey v2 (native Gui)','instant','~3 MB','~1 MB',2,'very low','Best global hotkeys on Windows. No real blur or 3D; Minecraft look only via images.'],
+  ['ahkwv','AHK v2 + WebView2','~80 ms','~70 MB','~2 MB',5,'low','Full HTML/CSS UI from AHK (WebView2 lib). Good if you want to stay in AHK.'],
+  ['tauri','Tauri 2 (Rust + WebView2)','<50 ms*','~50 MB','~5 MB',5,'medium','Official global-shortcut, tray, autostart, single-instance plugins. Transparent windows. * when kept resident'],
+  ['electron','Electron','<50 ms*','~200 MB','~150 MB',5,'low','JS only, easiest UI work, but heavy for a tool that is always running.'],
+  ['wpf','C# WPF / WinUI 3','<50 ms','~60 MB','~10 MB',4,'med-high','Native Mica/Acrylic, very Windows-like. Animations take more code.'],
+  ['py','Python + PySide6 (QML)','~100 ms','~90 MB','~80 MB',4,'medium','You have Python. QML animates well; packaging is the weak spot.'],
+];
+function renderStacks() {
+  $('#stackBody').innerHTML = STACKS.map(([id, n, lat, ram, size, vis, eff, note]) => `<tr data-stack="${id}" class="${S.stack === id ? 'cur' : ''}">
+    <td><b>${n}</b>${id === 'tauri' ? '<small style="color:var(--accent)">recommended</small>' : id === 'ahk' ? '<small style="color:var(--grass)">Phase 0 prototype</small>' : ''}</td>
+    <td>${lat}</td><td>${ram}</td><td>${size}</td><td>${dots(vis)}</td><td>${eff}</td><td><small style="color:var(--text)">${note}</small></td>
+    <td><button class="iconbtn">${S.stack === id ? '★' : '☆'}</button></td></tr>`).join('');
+}
+$('#stackBody').addEventListener('click', e => { const tr = e.target.closest('tr'); if (!tr) return; S.stack = tr.dataset.stack; save(); renderStacks(); });
+
+/* ───────── code snippets ───────── */
+const CODE = {
+ahk: `#Requires AutoHotkey v2.0
+#SingleInstance Force
+
+; [Shown name, Path] — order = number key
+Projects := [
+    ["RailPair",   "D:\\Hitachi-Live"],
+    ["Hitachi CV", "D:\\HitachiCV"],
+    ["PingPair",   "D:\\PingPair-PrivDev"],
+    ["My Web CV",  "D:\\CV-Web"],
+    ["AI GPU",     "D:\\AI-GPU"],
+    ["CC Figure",  "D:\\CC Figure"],
+]
+
+^\\::ShowLauncher()        ; Ctrl + \\
+
+ShowLauncher() {
+    m := Menu()
+    for i, p in Projects
+        m.Add("&" i "   " p[1], OpenProject.Bind(p[1], p[2]))
+    m.Add()
+    ; D:\\ stays unquoted — "D:\\" would escape the quote
+    m.Add("&0   Other...", (*) => Run('wt.exe -w new --maximized -d D:\\ powershell -NoExit'))
+    m.Show()
+}
+
+OpenProject(name, path, *) {
+    ; already open? focus it instead of opening a duplicate
+    if WinExist(name " ahk_exe WindowsTerminal.exe") {
+        WinActivate
+        return
+    }
+    Run('wt.exe -w new --fullscreen --title "' name '" --suppressApplicationTitle -d "' path '" powershell -NoExit -Command claude')
+}`,
+rs: `use std::process::Command;
+
+#[tauri::command]
+fn launch(name: String, path: String, mode: String) -> Result<(), String> {
+    // args as an array: no manual quoting, so "D:\\" and spaces are safe
+    let mut args: Vec<String> = [
+        "-w", "new", "--fullscreen",
+        "--title", &name, "--suppressApplicationTitle",
+        "-d", &path, "powershell", "-NoExit",
+    ].iter().map(|s| s.to_string()).collect();
+
+    match mode.as_str() {
+        "claude"   => args.extend(["-Command".into(), "claude".into()]),
+        "continue" => args.extend(["-Command".into(), "claude --continue".into()]),
+        _ => {} // "shell": plain PowerShell
+    }
+    Command::new("wt.exe").args(&args).spawn()
+        .map(|_| ()).map_err(|e| e.to_string())
+}`,
+js: `import { register } from '@tauri-apps/plugin-global-shortcut';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+
+// window is created hidden at startup and never destroyed
+await register('CommandOrControl+Backslash', async (e) => {
+  if (e.state !== 'Pressed') return;
+  const w = getCurrentWindow();
+  if (await w.isVisible()) return w.hide();
+  await w.show();
+  await w.setFocus();          // overlay replays its open animation
+});`
+};
+function hl(src, lang) {
+  let s = esc(src);
+  const cm = lang === 'ahk' ? /(;[^\n]*)/g : /(\/\/[^\n]*)/g;
+  s = s.replace(/(&quot;[^&\n]*?&quot;|&#39;[^\n]*?&#39;)/g, '<span class="cs">$1</span>');
+  s = s.replace(cm, m => m.includes('class="cs"') ? m : `<span class="cm">${m}</span>`);
+  s = s.replace(/\b(fn|let|mut|match|use|import|from|await|async|const|if|return|for|in|#Requires|#SingleInstance)\b/g, '<span class="ck">$1</span>');
+  return s;
+}
+['ahk', 'rs', 'js'].forEach(k => $('#' + k).innerHTML = hl(CODE[k], k));
+$$('.copy[data-copy]').forEach(b => b.addEventListener('click', () => copy(CODE[b.dataset.copy])));
+
+/* ───────── names & logos ───────── */
+const NAMES = [
+  ['Hotbar','Press 1–9 like in Minecraft. Short, and you can say "hotbar it".'],
+  ['Ender','An ender pearl teleports you, the same way this jumps you into a project.'],
+  ['Waypoint','Saved places you jump back to. Calm and professional.'],
+  ['Spawn','"Spawn a session." Works for both gamers and devs.'],
+  ['Respawn','Fits ⇧↵ "continue last session" nicely.'],
+  ['Claunch','Claude + launch. Says exactly what it does.'],
+  ['Beacon','A light over each project, like a Minecraft beacon.'],
+  ['Jumpgate','Sci-fi feel, one gate per project.'],
+  ['Portal','Step through into the project; pairs with the Portal animation. (Generic word, also a Valve game.)'],
+  ['Warp','Short and fast, but already the name of a well-known terminal app. Avoid.', true],
+];
+function renderNames() {
+  const all = [...NAMES, ...S.customNames.map(n => [n, 'Your idea'])];
+  $('#names').innerHTML = all.map(([n, t, taken]) => `<button class="nm ${taken ? 'taken' : ''}" data-name="${esc(n)}" aria-pressed="${!!S.names[n]}"><span class="star">${S.names[n] ? '★' : '☆'}</span><b>${esc(n)}</b><span>${esc(t)}</span></button>`).join('');
+}
+$('#names').addEventListener('click', e => { const b = e.target.closest('[data-name]'); if (!b) return; const n = b.dataset.name; S.names[n] = !S.names[n]; save(); renderNames(); updBrand(); });
+$('#addName').addEventListener('click', () => { const v = $('#newName').value.trim(); if (!v) return; if (!S.customNames.includes(v)) S.customNames.push(v); S.names[v] = true; $('#newName').value = ''; save(); renderNames(); updBrand(); });
+$('#newName').addEventListener('keydown', e => { if (e.key === 'Enter') $('#addName').click(); });
+
+function pix(map, pal) {
+  const h = map.length, w = map[0].length; let r = '';
+  map.forEach((row, y) => [...row].forEach((c, x) => { if (pal[c]) r += `<rect x="${x}" y="${y}" width="1.04" height="1.04" fill="${pal[c]}"/>`; }));
+  return `<svg viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges" role="img">${r}</svg>`;
+}
+const LOGOS = [
+  ['slot','Hotbar Slot','A selected inventory slot holding a terminal prompt. Pixel art; reads well at 16 px.',
+    pix(['KKKKKKKKKKKK','KWWWWWWWWWWK','KW........DK','KW.O......DK','KW..O.....DK','KW...O....DK','KW..O.....DK','KW.O..OOO.DK','KW........DK','KW........DK','KDDDDDDDDDDK','KKKKKKKKKKKK'],
+      {K:'#111', W:'#e6e6e6', D:'#4a4a4a', '.':'#8b8b8b', O:'#e0783f'}),
+    'Pixel-art app icon, 32x32 grid, a selected Minecraft-style inventory slot with thick white highlight frame, inside it an orange terminal prompt symbol ">_", flat colors, no text, transparent background, crisp pixels'],
+  ['pearl','Ender Pearl','A teal teleport pearl with a glint: "jump anywhere". Pairs with the Portal animation.',
+    pix(['....KKKK....','..KKTTTTKK..','.KTTLTTTTTK.','.KTLLTTTTTK.','KTTTTDDTTTTK','KTTTDDDDTTTK','KTTTDDDDTTTK','KTTTTDDTTTTK','.KTTTTTTTTK.','.KTTTTTTTTK.','..KKTTTTKK..','....KKKK....'],
+      {K:'#06201d', T:'#1f8a7a', L:'#9ff5e2', D:'#0b3b37'}),
+    'Pixel-art app icon, glossy teal ender pearl orb with dark green core and white glint, small orange spark, 32x32 pixel grid, no text, transparent background'],
+  ['portal','Portal Frame','An obsidian frame with a purple swirl: every project is a portal.',
+    pix(['OOOOOOOOOOOO','OPPQPPPPQPPO','OPQPPPPQPPPO','OPPPPQPPPQPO','OQPPQPPPPPPO','OPPPPPPQPPQO','OPQPPPPPPPPO','OPPPQPPPQPPO','OPPPPPQPPPQO','OQPPPPPPPPPO','OPPQPPPQPPPO','OOOOOOOOOOOO'],
+      {O:'#1a0f2e', P:'#7b33e0', Q:'#d29cff'}),
+    'Pixel-art app icon, dark obsidian square frame with swirling purple nether portal inside, small orange ">_" glyph in the center, 32x32 grid, no text'],
+  ['grass','Grass Terminal','A grass block whose dirt side holds the prompt. The most Minecraft-like option.',
+    pix(['GHGGHGGGHGHG','GGHGGGHGGGGH','GBGGBGGBGGBG','BBCBBBBCBBBB','BCBBBBBBBCBB','BBOBBBBBBBBB','BBBOBBBBBCBB','BBOBBOOOBBBB','BCBBBBBBBBCB','BBBBCBBBBBBB','BBBBBBBCBBBB','CBBBBBBBBBBC'],
+      {G:'#5fa83a', H:'#86cf55', B:'#7a5230', C:'#5b3a1f', O:'#ffb36b'}),
+    'Isometric pixel-art Minecraft-style grass block, on the dirt side an orange glowing terminal prompt ">_", soft shadow, app icon, no text, transparent background'],
+  ['warp','Chevron Warp','Modern vector: two chevrons and a cursor, in Claude-adjacent clay. Clean at every size.',
+    `<svg viewBox="0 0 64 64" role="img"><rect x="2" y="2" width="60" height="60" rx="16" fill="#c96442"/><path d="M15 20l12 12-12 12" fill="none" stroke="#fff6ef" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="M29 20l12 12-12 12" fill="none" stroke="#fff6ef" stroke-opacity=".5" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><rect x="44" y="40" width="9" height="5" rx="2" fill="#fff6ef"/></svg>`,
+    'Minimal modern app icon, rounded square in warm terracotta clay color, two cream chevrons pointing right with motion feel and a short cursor bar, flat vector, no text'],
+  ['key','Backslash Keycap','The hotkey itself: a chunky keycap with "\\" and a spark. Says "press me".',
+    `<svg viewBox="0 0 64 64" role="img"><rect x="5" y="9" width="54" height="50" rx="11" fill="#2b2622"/><rect x="9" y="6" width="46" height="42" rx="9" fill="#efe7dc"/><path d="M24 16l16 24" stroke="#c96442" stroke-width="6" stroke-linecap="round"/><path d="M47 13v8M43 17h8" stroke="#c96442" stroke-width="3" stroke-linecap="round"/></svg>`,
+    'App icon of a single chunky mechanical keycap seen slightly from above, cream key with a bold terracotta backslash symbol and a tiny four-point spark, soft shadow, no text'],
+  ['stackm','Stacked Menu','Flat, no pixels: three menu bars with the top one selected. Your Game Menu, as an icon.',
+    `<svg viewBox="0 0 64 64" role="img"><rect x="2" y="2" width="60" height="60" rx="16" fill="#1f1d1a"/><rect x="12" y="13" width="40" height="10" rx="3" fill="#e07a52"/><rect x="12" y="27" width="40" height="10" rx="3" fill="#4a4540"/><rect x="12" y="41" width="40" height="10" rx="3" fill="#4a4540"/><circle cx="18" cy="18" r="2.4" fill="#fff"/><circle cx="18" cy="32" r="2.4" fill="#9a928a"/><circle cx="18" cy="46" r="2.4" fill="#9a928a"/></svg>`,
+    'Flat minimal app icon, dark charcoal rounded square, three horizontal rounded menu bars stacked vertically, the top bar terracotta orange and highlighted, the others muted grey, a small dot at the left of each bar, no text'],
+  ['orbitm','Orbit Prompt','A prompt chevron with projects orbiting it. Matches the Orbit 3D layout.',
+    `<svg viewBox="0 0 64 64" role="img"><circle cx="32" cy="32" r="30" fill="#0e1424"/><ellipse cx="32" cy="32" rx="25" ry="10" fill="none" stroke="#7cf0c5" stroke-opacity=".7" stroke-width="2" transform="rotate(-20 32 32)"/><path d="M26 24l9 8-9 8" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="54" cy="23" r="4.5" fill="#e07a52"/><circle cx="10" cy="41" r="3.2" fill="#a78bfa"/></svg>`,
+    'Minimal app icon, deep navy circle, a white terminal chevron ">" in the center, a thin mint-green tilted orbit ring around it with two small colored planets (orange and violet), flat vector, no text'],
+  ['folder','Folder Bolt','A project folder with a lightning bolt: "instant open". Reads at 16 px.',
+    `<svg viewBox="0 0 64 64" role="img"><path d="M6 18a6 6 0 0 1 6-6h13l6 6h21a6 6 0 0 1 6 6v24a6 6 0 0 1-6 6H12a6 6 0 0 1-6-6z" fill="#f2b366"/><path d="M6 26h52v22a6 6 0 0 1-6 6H12a6 6 0 0 1-6-6z" fill="#e8964a"/><path d="M35 28l-10 13h8l-3 11 11-14h-8z" fill="#fff"/></svg>`,
+    'Flat app icon of a warm amber folder with a bold white lightning bolt on its front, soft rounded shapes, subtle depth, no text, transparent background'],
+];
+function renderLogos() {
+  $('#logos').innerHTML = LOGOS.map(([id, t, d, svg, prompt]) => `<div class="logo" data-logo="${id}" aria-pressed="${!!S.logos[id]}">
+    <div class="art">${svg}${svg.replace('<svg ', '<svg class="sm" ')}</div>
+    <div class="meta"><b>${t}</b><span>${d}</span>
+      <div class="btnrow"><button class="btn ${S.logos[id] ? 'pri' : ''}" data-like="${id}">${S.logos[id] ? '♥ Liked' : '♡ Like'}</button><button class="btn" data-prompt="${id}" title="Copy the OpenRouter image prompt">Copy prompt</button></div></div></div>`).join('');
+}
+$('#logos').addEventListener('click', e => {
+  const l = e.target.closest('[data-like]'), p = e.target.closest('[data-prompt]');
+  if (l) { S.logos[l.dataset.like] = !S.logos[l.dataset.like]; save(); renderLogos(); updBrand(); }
+  if (p) copy(LOGOS.find(x => x[0] === p.dataset.prompt)[4]);
+});
+function updBrand() {
+  const name = Object.keys(S.names).find(n => S.names[n]) || 'Launcher';
+  const logo = LOGOS.find(x => S.logos[x[0]]) || LOGOS[0];
+  $('#brandMark').innerHTML = logo[3] + `<span>${esc(name)}</span>`;
+}
+
+/* ───────── picks ───────── */
+function picksText() {
+  const on = o => Object.keys(o || {}).filter(k => o[k]);
+  const featBy = Object.entries(FEATS).map(([tag, l]) => `  ${tag}: ${l.filter(f => S.features[f[0]]).map(f => f[1]).join('; ') || '—'}`).join('\n');
+  return `LAUNCHER PICKS
+Interface:  viewing ${UIS[S.ui].label} · favourite ${UIS[S.favUi]?.label || '—'}
+Theme:      ${THEMES[S.theme].label} · opacity ${Math.round(S.alpha * 100)}% · blur ${S.blur}px
+Buttons:    texture=${TEX[S.tex].label} · depth=${DEPTHS[S.depth].label} · strength ${Math.round(S.texOp * 100)}% · per-button tilt=${S.btnTilt}
+Motion:     open=${OPEN_ANIMS[S.openAnim]} · select=${SEL_ANIMS[S.selAnim]} · tilt=${S.tilt} · sound=${S.sound} · animations=${S.motion}
+Window:     ${S.win}
+Triggers:   ${HK.filter(h => S.hotkeys[h[0]]).map(h => h[1]).join(', ') || '—'}
+Stack:      ${(STACKS.find(s => s[0] === S.stack) || [])[1] || '—'}
+Names ★:    ${on(S.names).join(', ') || '—'}
+Logos ♥:    ${LOGOS.filter(l => S.logos[l[0]]).map(l => l[1]).join(', ') || '—'}
+Features:
+${featBy}
+Projects:
+${S.projects.map((p, i) => `  ${i + 1}. ${p.name} = ${p.path}  [${p.color}, ↵=${p.mode || 'claude'}${p.pre ? ', pre: ' + p.pre : ''}]`).join('\n')}
+  0. Other… = ${S.other.path} (${S.other.action === 'pick' ? 'folder picker → claude' : 'plain shell'})`;
+}
+function renderPicks() { const o = $('#picksOut'); if (o) o.textContent = picksText(); }
+$('#fab').addEventListener('click', () => { renderPicks(); $('#drawer').classList.toggle('open'); });
+$('#drawerClose').addEventListener('click', () => $('#drawer').classList.remove('open'));
+$('#copyPicks').addEventListener('click', () => copy(picksText()));
+$('#resetAll').addEventListener('click', () => {
+  S = DEF(); S.features = {}; FEATS.Must.forEach(f => S.features[f[0]] = true); save(); boot();
+  toast('Everything reset');
+});
+
+/* ───────── utils ───────── */
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 1600); }
+function copy(text) {
+  const done = () => toast('Copied');
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, () => fallback());
+  else fallback();
+  function fallback() { const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) { toast('Copy failed'); } ta.remove(); }
+}
+const PAGE_THEMES = ['auto', 'light', 'dark'];
+let pageTheme = 'auto';
+try { pageTheme = localStorage.getItem('ccl-page-theme') || 'auto'; } catch (e) {}
+function applyPageTheme() {
+  if (pageTheme === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', pageTheme);
+  $('#themeBtn').textContent = {auto:'◐ Auto', light:'☀ Light', dark:'☾ Dark'}[pageTheme];
+}
+$('#themeBtn').addEventListener('click', () => { pageTheme = PAGE_THEMES[(PAGE_THEMES.indexOf(pageTheme) + 1) % 3]; try { localStorage.setItem('ccl-page-theme', pageTheme); } catch (e) {} applyPageTheme(); });
+
+function boot() {
+  if (!UIS[S.ui]) S.ui = 'blockcraft';
+  if (!THEMES[S.theme]) S.theme = 'arcade';
+  if (!TEX[S.tex]) S.tex = 'gloss';
+  if (!DEPTHS[S.depth]) S.depth = 'slab';
+  applyPageTheme(); renderChips(); syncControls(); renderEditor(); renderCompare(); renderFeatures();
+  renderHK(); renderStacks(); renderNames(); renderLogos(); updBrand(); renderPicks(); renderLab();
+  cur.sel = 0; openOverlay();
+}
+boot();
+})();
+</script>
+</body>
+</html>
