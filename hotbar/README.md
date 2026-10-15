@@ -57,3 +57,6 @@ From an admin PowerShell:
 ```
 
 When elevated, Hotbar starts terminals through the desktop shell, so Claude sessions never inherit admin rights.
+
+Updating: just run the new installer. It can't close an elevated Hotbar itself, so it ends the autostart task
+before replacing files and starts it again afterwards (`src-tauri\windows\hooks.nsh`).
