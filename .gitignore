@@ -2,3 +2,13 @@ node_modules/
 target/
 .playwright-mcp/
 *.log
+
+# updater signing keys: the private key lives in %USERPROFILE%\.tauri and must never be committed
+*.key
+*.key.pub
+
+# local tool state
+__pycache__/
+.claude/settings.local.json
+Thumbs.db
+desktop.ini

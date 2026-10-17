@@ -1,6 +1,7 @@
 mod config;
 mod hook;
 mod launch;
+mod update;
 mod winutil;
 
 use config::{Config, Project};
@@ -37,6 +38,8 @@ struct Snapshot {
     elevated: bool,
     error: Option<String>,
 }
+
+const TOOLTIP: &str = "Hotbar: double-tap Ctrl";
 
 fn main_window(app: &AppHandle) -> Option<WebviewWindow> {
     app.get_webview_window("main")
@@ -320,6 +323,7 @@ pub fn run() {
             show_overlay(app, view);
         }))
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState { store: Mutex::new(store), pinned: AtomicBool::new(false) })
         .invoke_handler(tauri::generate_handler![
             snapshot,
@@ -366,18 +370,20 @@ pub fn run() {
             let open = MenuItemBuilder::with_id("open", "Open Hotbar    (Ctrl ×2)").build(app)?;
             let settings = MenuItemBuilder::with_id("settings", "Settings…").build(app)?;
             let edit = MenuItemBuilder::with_id("edit", "Edit config.json").build(app)?;
+            let check = MenuItemBuilder::with_id(update::MENU_ID, update::CHECK_LABEL).build(app)?;
             let quit = MenuItemBuilder::with_id("quit", "Quit Hotbar").build(app)?;
             let sep = PredefinedMenuItem::separator(app)?;
-            let menu = MenuBuilder::new(app).items(&[&open, &settings, &edit, &sep, &quit]).build()?;
+            let menu = MenuBuilder::new(app).items(&[&open, &settings, &edit, &check, &sep, &quit]).build()?;
             TrayIconBuilder::with_id("hotbar")
                 .icon(app.default_window_icon().cloned().expect("bundled icon"))
-                .tooltip("Hotbar: double-tap Ctrl")
+                .tooltip(TOOLTIP)
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, ev| match ev.id().as_ref() {
                     "open" => show_overlay(app, "menu"),
                     "settings" => show_overlay(app, "settings"),
                     "edit" => open_config_file(),
+                    update::MENU_ID => update::on_menu(app),
                     "quit" => app.exit(0),
                     _ => {}
                 })
@@ -387,6 +393,7 @@ pub fn run() {
                     }
                 })
                 .build(app)?;
+            update::start(&handle, check);
 
             // Autostart passes --background and stays silent in the tray. A start from the Start menu
             // or desktop icon opens the menu, so the click visibly does something. A broken

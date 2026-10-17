@@ -44,7 +44,8 @@ Requires Rust (MSVC toolchain), Visual Studio C++ Build Tools and Node.
 
 ```powershell
 npm install
-npm run build          # installer: src-tauri\target\release\bundle\nsis\
+$env:TAURI_SIGNING_PRIVATE_KEY = "$env:USERPROFILE\.tauri\hotbar.key"   # see Releases
+npm run build          # installer + .sig: src-tauri\target\release\bundle\nsis\
 cargo test --manifest-path src-tauri\Cargo.toml --lib
 ```
 
@@ -64,5 +65,54 @@ From an admin PowerShell:
 
 When elevated, Hotbar starts terminals through the desktop shell, so Claude sessions never inherit admin rights.
 
-Updating: just run the new installer. It can't close an elevated Hotbar itself, so it ends the autostart task
+Updating by hand: just run the new installer. It can't close an elevated Hotbar itself, so it ends the autostart task
 before replacing files and starts it again afterwards (`src-tauri\windows\hooks.nsh`).
+
+## Updates
+
+Hotbar checks for a new version 30 s after it starts and then once a day, and never installs on its own:
+an update found shows up in the tray menu as **Install update vX** (and in the tray tooltip). Clicking it downloads
+the installer, verifies its signature against the public key in `tauri.conf.json` and installs it with a small
+progress window. **Check for updates…** checks right away and asks before installing. Each check is logged in
+`hotbar.log`; a failed check (offline, say) is only logged.
+
+After the update the autostart task, if there is one, brings Hotbar back elevated; without it, the installer
+restarts Hotbar in the tray. `HOTBAR_UPDATE_ENDPOINT` overrides where `latest.json` is fetched from.
+
+Testing an update end to end without publishing: build two versions with plain http allowed (release builds
+otherwise refuse anything but https), serve the newer one locally and point Hotbar at it.
+
+```powershell
+'{"plugins":{"updater":{"dangerousInsecureTransportProtocol":true}}}' | Set-Content $env:TEMP\old.json
+'{"version":"0.9.1","plugins":{"updater":{"dangerousInsecureTransportProtocol":true}}}' | Set-Content $env:TEMP\new.json
+npx tauri build --config $env:TEMP\old.json   # install this one
+npx tauri build --config $env:TEMP\new.json   # serve this one
+python scripts\latest_json.py <dir>\Hotbar_0.9.1_x64-setup.exe --url-base http://127.0.0.1:8790/
+npx http-server <dir> -p 8790 -a 127.0.0.1
+[Environment]::SetEnvironmentVariable('HOTBAR_UPDATE_ENDPOINT', 'http://127.0.0.1:8790/latest.json', 'User')
+```
+
+Restart Hotbar (`schtasks /End /TN Hotbar; schtasks /Run /TN Hotbar`) so it reads the variable, then remove the
+variable and reinstall a normal build afterwards.
+
+## Releases
+
+Hotbar fetches `releases/latest/download/latest.json` from this repo, i.e. from the newest release that isn't a
+draft or pre-release, so every release from now on needs its `latest.json`. Updates are signed with the key in
+`%USERPROFILE%\.tauri\hotbar.key`, which stays out of the repo: back it up, because installed copies only
+accept updates signed with it (its public half is `plugins.updater.pubkey` in `tauri.conf.json`).
+
+1. Bump the version in `src-tauri\tauri.conf.json`, `src-tauri\Cargo.toml` and `package.json`.
+2. Build with the key set (above). Without `TAURI_SIGNING_PRIVATE_KEY` the build stops at the signing step, after
+   writing the installer. The key has no password; if you regenerate it with one, also set
+   `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (and replace `pubkey`, which only works before the first release).
+3. `python scripts\latest_json.py src-tauri\target\release\bundle\nsis\Hotbar_X.Y.Z_x64-setup.exe --notes "…"`
+   writes `latest.json` next to the installer.
+4. Publish all three as one release:
+
+```powershell
+git tag -a vX.Y.Z -m "Hotbar vX.Y.Z"; git push origin vX.Y.Z
+$n = "src-tauri\target\release\bundle\nsis"
+gh release create vX.Y.Z --verify-tag -t "Hotbar vX.Y.Z" `
+  "$n\Hotbar_X.Y.Z_x64-setup.exe" "$n\Hotbar_X.Y.Z_x64-setup.exe.sig" "$n\latest.json"
+```
