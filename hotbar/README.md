@@ -18,12 +18,14 @@ Autostart at logon passes `--background`, so it stays silent in the tray.
 | `⇧↵` / `⇧1`–`9` | `claude --continue` |
 | `Alt↵` | `claude --resume` (session picker) |
 | `Ctrl↵` | PowerShell only |
-| `Ctrl⇧↵` | new window even if that project is already open |
+| `Ctrl⇧↵` | new session even if that project is already open |
 | type letters | filter |
 | `Ctrl ,` | settings |
 | `Esc` / click outside | hide |
 
 If a project's session window is already open, Hotbar focuses it instead of opening a duplicate.
+A forced second session opens as a tab beside the first (each project gets its own named Windows Terminal window);
+untick "Open a project's extra sessions as tabs in its window" in Settings to get a separate window instead.
 
 ## Config
 

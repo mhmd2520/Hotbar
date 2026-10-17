@@ -99,10 +99,17 @@ fn wt_escape(a: &str) -> String {
     a.replace(';', "\\;")
 }
 
+/// Each project gets its own named wt window, so a second session opens as a tab beside the first.
+/// The prefix keeps an all-digit name from being read as a window ID.
+fn window_name(p: &Project) -> String {
+    let n: String = p.name.chars().map(|c| if c.is_ascii_alphanumeric() { c } else { '-' }).collect();
+    format!("hotbar-{n}")
+}
+
 /// Arguments for wt.exe, already quoted.
 pub fn wt_args(cfg: &Config, p: &Project, mode: Mode) -> String {
     let dir = normalize_dir(&p.path);
-    let mut a: Vec<String> = vec!["-w".into(), "new".into()];
+    let mut a: Vec<String> = vec!["-w".into(), if cfg.launch.same_window { window_name(p) } else { "new".into() }];
     match cfg.launch.window.as_str() {
         "fullscreen" => a.push("--fullscreen".into()),
         "maximized" => a.push("--maximized".into()),
@@ -311,7 +318,7 @@ mod tests {
         let mut p = cfg.projects[5].clone(); // CC Figure
         p.pre = ".venv\\Scripts\\Activate.ps1".into();
         let a = wt_args(&cfg, &p, Mode::Continue);
-        assert!(a.starts_with("-w new --maximized new-tab --title \"CC Figure\" --suppressApplicationTitle"));
+        assert!(a.starts_with("-w hotbar-CC-Figure --maximized new-tab --title \"CC Figure\" --suppressApplicationTitle"));
         assert!(a.contains("-d \"D:\\CC Figure\" powershell -NoExit"));
         assert!(a.ends_with("-Command \".venv\\Scripts\\Activate.ps1\\; claude --continue\""));
     }

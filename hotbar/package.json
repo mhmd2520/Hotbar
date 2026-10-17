@@ -1,7 +1,7 @@
 {
   "name": "hotbar",
   "private": true,
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "One keystroke to any project, Claude Code already running.",
   "scripts": {
     "tauri": "tauri",

@@ -420,8 +420,9 @@ function renderSettingsHtml() {
         <label>Terminal window<select id="lWin">${opts({ maximized: 'Maximized', fullscreen: 'Full screen (F11)', normal: 'Normal' }, l.window)}</select></label>
         <label>Shell<select id="lShell">${opts({ powershell: 'Windows PowerShell 5.1', pwsh: 'PowerShell 7 (pwsh)' }, l.shell)}</select></label>
         <label class="check"><input type="checkbox" id="lFocus" ${l.focusExisting ? 'checked' : ''}> Focus an open session instead of opening a duplicate</label>
+        <label class="check"><input type="checkbox" id="lSame" ${l.sameWindow !== false ? 'checked' : ''}> Open a project's extra sessions as tabs in its window</label>
       </div>
-      <p class="hintline" style="margin-top:12px">In the menu: <kbd>↵</kbd> claude · <kbd>⇧↵</kbd> continue · <kbd>Alt↵</kbd> resume picker · <kbd>Ctrl↵</kbd> shell · <kbd>Ctrl⇧↵</kbd> force a new window · <kbd>Ctrl ,</kbd> settings</p>
+      <p class="hintline" style="margin-top:12px">In the menu: <kbd>↵</kbd> claude · <kbd>⇧↵</kbd> continue · <kbd>Alt↵</kbd> resume picker · <kbd>Ctrl↵</kbd> shell · <kbd>Ctrl⇧↵</kbd> force a new session · <kbd>Ctrl ,</kbd> settings</p>
     </div>
     <footer><span class="path" id="cfgPath" title="Open in Notepad">${esc(SNAP.configPath)}</span><button data-act="cancel">Cancel</button><button class="pri" data-act="save">Save</button></footer>
   </div>`;
@@ -448,6 +449,7 @@ function readSettings() {
   c.launch.window = $('#lWin').value;
   c.launch.shell = $('#lShell').value;
   c.launch.focusExisting = $('#lFocus').checked;
+  c.launch.sameWindow = $('#lSame').checked;
 }
 
 const settingsEl = $('#settings');
