@@ -243,7 +243,8 @@ fn open_index(app: &AppHandle, cfg: &Config, index: usize, mode: &str, force_new
 async fn snapshot(app: AppHandle, state: State<'_, AppState>) -> Result<Snapshot, String> {
     let error = refresh(&app, &state);
     let cfg = state.store().cfg.clone();
-    let status = cfg.projects.iter().map(launch::status).collect();
+    let tabs = winutil::terminal_tab_titles();
+    let status = cfg.projects.iter().map(|p| launch::status(p, &tabs)).collect();
     Ok(Snapshot {
         config: cfg,
         status,

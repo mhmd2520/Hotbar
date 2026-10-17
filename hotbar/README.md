@@ -24,8 +24,12 @@ Autostart at logon passes `--background`, so it stays silent in the tray.
 | `Esc` / click outside | hide |
 
 If a project's session window is already open, Hotbar focuses it instead of opening a duplicate.
-A forced second session opens as a tab beside the first (each project gets its own named Windows Terminal window);
-untick "Open a project's extra sessions as tabs in its window" in Settings to get a separate window instead.
+Settings → Launch → "Sessions open in" decides where a new session goes:
+
+- **One window: all projects as tabs**: every project is a tab in one shared window, mixed side by side;
+  reopening a project switches to its tab, even when another tab is in front
+- **A window per project**: a forced second session opens as a tab beside the project's first
+- **A new window every time**
 
 ## Config
 

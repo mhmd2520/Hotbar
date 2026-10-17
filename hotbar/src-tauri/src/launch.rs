@@ -106,10 +106,21 @@ fn window_name(p: &Project) -> String {
     format!("hotbar-{n}")
 }
 
+/// The wt window a session opens in: the shared one, the project's own, or a new one.
+fn window_target(cfg: &Config, p: &Project) -> String {
+    if cfg.launch.one_window {
+        "hotbar".into()
+    } else if cfg.launch.same_window {
+        window_name(p)
+    } else {
+        "new".into()
+    }
+}
+
 /// Arguments for wt.exe, already quoted.
 pub fn wt_args(cfg: &Config, p: &Project, mode: Mode) -> String {
     let dir = normalize_dir(&p.path);
-    let mut a: Vec<String> = vec!["-w".into(), if cfg.launch.same_window { window_name(p) } else { "new".into() }];
+    let mut a: Vec<String> = vec!["-w".into(), window_target(cfg, p)];
     match cfg.launch.window.as_str() {
         "fullscreen" => a.push("--fullscreen".into()),
         "maximized" => a.push("--maximized".into()),
@@ -170,7 +181,9 @@ pub fn launch(cfg: &Config, p: &Project, mode: Mode, force_new: bool) -> Result<
         return Err(format!("Folder not found: {dir}"));
     }
     if cfg.launch.focus_existing && !force_new {
-        if let Some(hwnd) = winutil::find_terminal(&title_for(p, mode)) {
+        // A window's title is only its active tab's, so a session behind another tab is looked up by tab
+        let title = title_for(p, mode);
+        if let Some(hwnd) = winutil::find_terminal(&title).or_else(|| winutil::select_terminal_tab(&title)) {
             winutil::force_foreground(hwnd);
             return Ok(format!("Focused the open {} window", p.name));
         }
@@ -245,7 +258,8 @@ fn git_branch(dir: &str) -> Option<String> {
     })
 }
 
-pub fn status(p: &Project) -> Status {
+/// `tabs`: every open Windows Terminal tab's title (`winutil::terminal_tab_titles`).
+pub fn status(p: &Project, tabs: &[String]) -> Status {
     let dir = normalize_dir(&p.path);
     let mut st = Status { exists: Path::new(&dir).is_dir(), ..Default::default() };
     if let Ok(entries) = std::fs::read_dir(transcript_dir(&dir)) {
@@ -259,7 +273,7 @@ pub fn status(p: &Project) -> Status {
         }
     }
     st.branch = git_branch(&dir);
-    st.running = winutil::find_terminal(&p.name).is_some();
+    st.running = winutil::find_terminal(&p.name).is_some() || tabs.iter().any(|t| *t == p.name);
     st
 }
 
@@ -321,5 +335,17 @@ mod tests {
         assert!(a.starts_with("-w hotbar-CC-Figure --maximized new-tab --title \"CC Figure\" --suppressApplicationTitle"));
         assert!(a.contains("-d \"D:\\CC Figure\" powershell -NoExit"));
         assert!(a.ends_with("-Command \".venv\\Scripts\\Activate.ps1\\; claude --continue\""));
+    }
+
+    #[test]
+    fn window_target_follows_launch_settings() {
+        let mut cfg = Config::default();
+        let p = cfg.projects[5].clone(); // CC Figure
+        assert_eq!(window_target(&cfg, &p), "hotbar-CC-Figure");
+        cfg.launch.one_window = true;
+        assert_eq!(window_target(&cfg, &p), "hotbar");
+        cfg.launch.one_window = false;
+        cfg.launch.same_window = false;
+        assert_eq!(window_target(&cfg, &p), "new");
     }
 }

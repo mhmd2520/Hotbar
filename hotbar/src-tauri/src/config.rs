@@ -38,6 +38,8 @@ pub struct Launch {
     pub focus_existing: bool,
     /// A project's second session opens as a tab in its first session's window, not a new window
     pub same_window: bool,
+    /// Every project opens as a tab in one shared window (takes precedence over `same_window`)
+    pub one_window: bool,
     /// "powershell" (Windows PowerShell 5.1) or "pwsh" (PowerShell 7)
     pub shell: String,
 }
@@ -71,7 +73,7 @@ impl Default for Trigger {
 }
 impl Default for Launch {
     fn default() -> Self {
-        Self { window: "maximized".into(), focus_existing: true, same_window: true, shell: "powershell".into() }
+        Self { window: "maximized".into(), focus_existing: true, same_window: true, one_window: false, shell: "powershell".into() }
     }
 }
 impl Default for Other {

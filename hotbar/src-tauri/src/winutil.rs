@@ -1,13 +1,17 @@
 //! Win32 helpers: monitor geometry, foreground activation, window lookup and
 //! launching unelevated from an elevated process.
 
-use windows::core::{Interface, BSTR, HSTRING};
+use windows::core::{Interface, BSTR, HSTRING, PCWSTR};
 use windows::Win32::System::Variant::VARIANT;
 use windows::Win32::Foundation::{HWND, POINT};
 use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MonitorFromPoint, MONITORINFO, MONITOR_DEFAULTTONEAREST};
 use windows::Win32::System::Com::{
-    CoCreateInstance, CoInitializeEx, CoUninitialize, IDispatch, IServiceProvider, CLSCTX_LOCAL_SERVER,
-    COINIT_APARTMENTTHREADED,
+    CoCreateInstance, CoInitializeEx, CoUninitialize, IDispatch, IServiceProvider, CLSCTX_INPROC_SERVER,
+    CLSCTX_LOCAL_SERVER, COINIT_APARTMENTTHREADED, COINIT_MULTITHREADED,
+};
+use windows::Win32::UI::Accessibility::{
+    CUIAutomation, IUIAutomation, IUIAutomationElement, IUIAutomationSelectionItemPattern, TreeScope_Descendants,
+    UIA_ControlTypePropertyId, UIA_SelectionItemPatternId, UIA_TabItemControlTypeId,
 };
 use windows::Win32::System::Threading::{AttachThreadInput, GetCurrentThreadId};
 use windows::Win32::UI::Input::KeyboardAndMouse::SetFocus;
@@ -16,7 +20,7 @@ use windows::Win32::UI::Shell::{
     CSIDL_DESKTOP, SID_STopLevelBrowser, SVGIO_BACKGROUND, SWC_DESKTOP, SWFO_NEEDDISPATCH,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    BringWindowToTop, FindWindowW, GetCursorPos, GetForegroundWindow, GetWindowThreadProcessId, IsIconic,
+    BringWindowToTop, FindWindowExW, FindWindowW, GetCursorPos, GetForegroundWindow, GetWindowThreadProcessId, IsIconic,
     SetForegroundWindow, ShowWindow, SW_RESTORE,
 };
 
@@ -65,9 +69,69 @@ pub fn foreground_is_ours() -> bool {
     }
 }
 
+const TERMINAL_CLASS: &str = "CASCADIA_HOSTING_WINDOW_CLASS";
+
 /// A Windows Terminal window whose title is exactly `title`.
 pub fn find_terminal(title: &str) -> Option<HWND> {
-    unsafe { FindWindowW(&HSTRING::from("CASCADIA_HOSTING_WINDOW_CLASS"), &HSTRING::from(title)).ok() }
+    unsafe { FindWindowW(&HSTRING::from(TERMINAL_CLASS), &HSTRING::from(title)).ok() }
+}
+
+/// Run `f` with a UI Automation client on a thread of its own: UIA clients want an MTA,
+/// and the caller may be the keyboard hook's thread, which must never block on COM.
+fn with_uia<T: Send>(f: impl FnOnce(&IUIAutomation) -> Option<T> + Send) -> Option<T> {
+    std::thread::scope(|s| {
+        s.spawn(|| unsafe {
+            let init = CoInitializeEx(None, COINIT_MULTITHREADED);
+            let res = CoCreateInstance::<_, IUIAutomation>(&CUIAutomation, None, CLSCTX_INPROC_SERVER).ok().and_then(|uia| f(&uia));
+            if init.is_ok() {
+                CoUninitialize();
+            }
+            res
+        })
+        .join()
+        .ok()
+        .flatten()
+    })
+}
+
+/// Every tab of every Windows Terminal window, with its window and title. A window's title is
+/// only its active tab's, so this is how a session behind another tab is found.
+unsafe fn terminal_tabs(uia: &IUIAutomation) -> Vec<(HWND, String, IUIAutomationElement)> {
+    let mut out = Vec::new();
+    let Ok(is_tab) = uia.CreatePropertyCondition(UIA_ControlTypePropertyId, &VARIANT::from(UIA_TabItemControlTypeId.0)) else {
+        return out;
+    };
+    let class = HSTRING::from(TERMINAL_CLASS);
+    let mut prev = None;
+    while let Ok(hwnd) = FindWindowExW(None, prev, &class, PCWSTR::null()) {
+        prev = Some(hwnd);
+        let Ok(tabs) = uia.ElementFromHandle(hwnd).and_then(|w| w.FindAll(TreeScope_Descendants, &is_tab)) else { continue };
+        for i in 0..tabs.Length().unwrap_or(0) {
+            if let Ok(tab) = tabs.GetElement(i) {
+                let name = tab.CurrentName().map(|n| n.to_string()).unwrap_or_default();
+                out.push((hwnd, name, tab));
+            }
+        }
+    }
+    out
+}
+
+/// Titles of every open Windows Terminal tab, background tabs included.
+pub fn terminal_tab_titles() -> Vec<String> {
+    with_uia(|uia| Some(unsafe { terminal_tabs(uia) }.into_iter().map(|(_, name, _)| name).collect())).unwrap_or_default()
+}
+
+/// Make the Windows Terminal tab titled exactly `title` the active one in its window,
+/// and return that window.
+pub fn select_terminal_tab(title: &str) -> Option<HWND> {
+    // HWND isn't Send, so it crosses the thread as an integer
+    let hwnd = with_uia(|uia| unsafe {
+        let (hwnd, _, tab) = terminal_tabs(uia).into_iter().find(|(_, name, _)| name == title)?;
+        let item: IUIAutomationSelectionItemPattern = tab.GetCurrentPatternAs(UIA_SelectionItemPatternId).ok()?;
+        item.Select().ok()?;
+        Some(hwnd.0 as isize)
+    })?;
+    Some(HWND(hwnd as _))
 }
 
 /// True if `name` is set in the user's or the machine's persistent environment (the registry),
