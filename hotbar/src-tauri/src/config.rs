@@ -72,11 +72,13 @@ pub struct Other {
 pub struct Updates {
     /// Check 30 s after start and then daily (Settings → Updates and the tray check either way)
     pub auto_check: bool,
+    /// After installing an update, Hotbar comes back showing Settings → Updates (instead of silently in the tray)
+    pub open_after_update: bool,
 }
 
 impl Default for Updates {
     fn default() -> Self {
-        Self { auto_check: true }
+        Self { auto_check: true, open_after_update: true }
     }
 }
 impl Default for Trigger {

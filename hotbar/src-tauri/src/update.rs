@@ -6,7 +6,8 @@
 //! One `Status` describes it all: every change goes to the page as an `update` event and to the tray item.
 
 use crate::log;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use std::sync::{Mutex, MutexGuard};
 use std::time::{Duration, SystemTime};
 use tauri::menu::MenuItem;
@@ -26,6 +27,8 @@ const CHECK_TIMEOUT: Duration = Duration::from_secs(30);
 const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(10 * 60);
 /// Without a Content-Length, progress is reported every this many bytes.
 const PROGRESS_STEP: u64 = 256 * 1024;
+/// An install marker older than this is still reported, but doesn't open Settings any more.
+const REOPEN_WITHIN: Duration = Duration::from_secs(10 * 60);
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -42,6 +45,8 @@ pub struct Status {
     pub error: Option<String>,
     pub downloaded: u64,
     pub total: Option<u64>,
+    /// This run was started by an update from this version.
+    pub updated_from: Option<String>,
 }
 
 #[derive(Clone, Serialize)]
@@ -55,7 +60,7 @@ pub struct Release {
 impl Status {
     fn initial(app: &AppHandle) -> Self {
         let current = app.package_info().version.to_string();
-        Self { current, available: None, phase: "idle", checked_at: None, error: None, downloaded: 0, total: None }
+        Self { current, available: None, phase: "idle", checked_at: None, error: None, downloaded: 0, total: None, updated_from: None }
     }
 }
 
@@ -264,6 +269,8 @@ fn install(app: &AppHandle, work: MutexGuard<'_, ()>, mut update: Update) -> Res
         s.total = None;
         s.error = None;
     });
+    let marker = Marker { from: update.current_version.clone(), to: update.version.clone() };
+    let _ = serde_json::to_string(&marker).map(|json| std::fs::write(marker_path(), json));
     let (mut done, mut reported) = (0u64, None);
     let result = tauri::async_runtime::block_on(update.download_and_install(
         |chunk, total| {
@@ -282,6 +289,7 @@ fn install(app: &AppHandle, work: MutexGuard<'_, ()>, mut update: Update) -> Res
     .map_err(|e| e.to_string());
     drop(work);
     if let Err(e) = &result {
+        let _ = std::fs::remove_file(marker_path());
         log(&format!("update install failed: {e}"));
         set_tray_visible(app, true);
         publish(app, |s| {
@@ -290,6 +298,47 @@ fn install(app: &AppHandle, work: MutexGuard<'_, ()>, mut update: Update) -> Res
         });
     }
     result
+}
+
+/// Written just before the installer runs and read by the next start, so Hotbar knows it was just updated
+/// (it comes back through the autostart task or the installer, neither of which can pass that on).
+#[derive(Serialize, Deserialize)]
+struct Marker {
+    from: String,
+    to: String,
+}
+
+fn marker_path() -> PathBuf {
+    crate::config::path().with_file_name("updating.json")
+}
+
+/// At start: was an update just installed? Records the outcome in the status (shown in Settings →
+/// Updates) and says whether to open that view, i.e. `updates.openAfterUpdate` for a recent update.
+pub fn after_restart(app: &AppHandle) -> bool {
+    let path = marker_path();
+    let Ok(text) = std::fs::read_to_string(&path) else { return false };
+    let recent = std::fs::metadata(&path).and_then(|m| m.modified()).is_ok_and(|t| t.elapsed().is_ok_and(|e| e < REOPEN_WITHIN));
+    let _ = std::fs::remove_file(&path);
+    let Ok(m) = serde_json::from_str::<Marker>(&text) else { return false };
+    match outcome(&m, &app.package_info().version.to_string()) {
+        Ok(()) => {
+            log(&format!("update: now running v{} (updated from v{})", m.to, m.from));
+            publish(app, |s| s.updated_from = Some(m.from));
+        }
+        Err(e) => {
+            log(&format!("update: {e}"));
+            publish(app, |s| s.error = Some(e));
+        }
+    }
+    recent && app.state::<crate::AppState>().store().cfg.updates.open_after_update
+}
+
+fn outcome(m: &Marker, current: &str) -> Result<(), String> {
+    if m.to == current {
+        Ok(())
+    } else {
+        Err(format!("The update to v{} didn't finish: still running v{current}.", m.to))
+    }
 }
 
 fn set_tray_visible(app: &AppHandle, visible: bool) {
@@ -387,7 +436,14 @@ mod tests {
 
     fn status(phase: &'static str, available: Option<&str>, downloaded: u64, total: Option<u64>) -> Status {
         let available = available.map(|v| Release { version: v.into(), notes: None, date: None });
-        Status { current: "0.1.5".into(), available, phase, checked_at: None, error: None, downloaded, total }
+        Status { current: "0.1.5".into(), available, phase, checked_at: None, error: None, downloaded, total, updated_from: None }
+    }
+
+    #[test]
+    fn a_restart_on_the_marker_version_counts_as_updated() {
+        let m = Marker { from: "0.1.7".into(), to: "0.1.8".into() };
+        assert!(outcome(&m, "0.1.8").is_ok());
+        assert_eq!(outcome(&m, "0.1.7").unwrap_err(), "The update to v0.1.8 didn't finish: still running v0.1.7.");
     }
 
     #[test]

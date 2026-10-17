@@ -290,7 +290,12 @@ listen('summon', async e => {
   if (error) toast(error);
   const editing = !$('#settings').hidden;
   if (editing) invoke('set_pinned', { pinned: true }).catch(() => {}); // keep an open editor and its unsaved changes
-  if (view === 'settings') { renderStage(false); if (!editing) openSettings(); return; }
+  if (view === 'settings' || view === 'updates') {
+    renderStage(false);
+    if (!editing) openSettings(view);
+    if (view === 'updates' && UPD?.updatedFrom) toast(`Hotbar updated to v${UPD.current}`);
+    return;
+  }
   renderStage(!editing);
   if (!editing) blip(440, .06, 'triangle', .05);
   if (cur.pending && !editing) { const p = cur.pending; cur.pending = null; launchDigit(p.d, p); }
@@ -328,6 +333,7 @@ function updLine() {
   if (u.phase === 'downloading') return `Downloading v${a?.version ?? ''}…`;
   if (u.phase === 'installing') return 'Installing: Hotbar closes and comes back in a few seconds.';
   if (a) return `v${a.version} is available` + (a.date ? ` · released ${new Date(a.date).toLocaleDateString()}` : '');
+  if (u.updatedFrom) return `Updated from v${u.updatedFrom} to v${u.current}`;
   if (u.checkedAt) return `Up to date · checked ${ago(u.checkedAt)}`;
   return 'Not checked yet';
 }
@@ -480,6 +486,7 @@ function renderSettingsHtml() {
       <div class="upd" id="upd">${updateHtml()}</div>
       <div class="grid" style="margin-top:12px">
         <label class="check" style="grid-column: 1 / -1"><input type="checkbox" id="uAuto" ${c.updates?.autoCheck !== false ? 'checked' : ''}> Check automatically (shortly after start, then daily)</label>
+        <label class="check" style="grid-column: 1 / -1"><input type="checkbox" id="uReopen" ${c.updates?.openAfterUpdate !== false ? 'checked' : ''}> Open Hotbar after an update (here, showing the result) instead of restarting silently in the tray</label>
       </div>
       <p class="hintline" style="margin-top:8px">Updates come from Hotbar's GitHub releases and are verified against its signing key before they run. They install silently in the background: Hotbar closes for a few seconds and comes back on its own.</p>
     </div>
@@ -510,7 +517,7 @@ function readSettings() {
   c.launch.focusExisting = $('#lFocus').checked;
   c.launch.oneWindow = $('#lTabs').value === 'shared';
   c.launch.sameWindow = $('#lTabs').value !== 'new';
-  c.updates = { ...c.updates, autoCheck: $('#uAuto').checked };
+  c.updates = { ...c.updates, autoCheck: $('#uAuto').checked, openAfterUpdate: $('#uReopen').checked };
 }
 
 const settingsEl = $('#settings');

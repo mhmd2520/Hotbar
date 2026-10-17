@@ -399,15 +399,23 @@ pub fn run() {
                 })
                 .build(app)?;
             update::start(&handle, check);
+            let updated = update::after_restart(&handle);
 
             // Autostart passes --background and stays silent in the tray. A start from the Start menu
-            // or desktop icon opens the menu, so the click visibly does something. A broken
-            // config.json is reported whenever the menu opens (Store keeps returning the parse error).
-            if !std::env::args().any(|a| a == "--background") {
+            // or desktop icon opens the menu, so the click visibly does something. Right after an
+            // update (with updates.openAfterUpdate) it opens Settings → Updates instead, either way.
+            // A broken config.json is reported whenever the menu opens (Store keeps returning the
+            // parse error).
+            let view = if updated {
+                Some("updates")
+            } else {
+                (!std::env::args().any(|a| a == "--background")).then_some("menu")
+            };
+            if let Some(view) = view {
                 let h = handle.clone();
                 std::thread::spawn(move || {
                     std::thread::sleep(std::time::Duration::from_millis(500)); // let the page load
-                    show_overlay(&h, "menu");
+                    show_overlay(&h, view);
                 });
             }
             if winutil::is_elevated() {
