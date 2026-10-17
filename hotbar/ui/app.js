@@ -15,8 +15,9 @@ const ov = $('#ov');
 const cur = { sel: 0, busy: false, q: '', shown: false, loading: false, pending: null };
 const okColor = c => /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(c || '');
 const safeColor = c => okColor(c) ? c : '#8d8d8d';
-let SNAP = null;   // { config, status[], configPath, elevated }
+let SNAP = null;   // { config, status[], configPath, elevated, update }
 let S = {};        // flattened ui settings, the shape skins.js reads
+let UPD = null;    // update status (update.rs Status), kept live by "update" events
 
 /* ───────── state ───────── */
 function mapSettings(cfg) {
@@ -41,6 +42,7 @@ function mapSettings(cfg) {
 async function reload() {
   SNAP = await invoke('snapshot');
   mapSettings(SNAP.config);
+  setUpdate(SNAP.update);
   if (SNAP.error) toast(SNAP.error);
 }
 
@@ -267,6 +269,7 @@ document.addEventListener('mousemove', e => {
   tiltEl = el;
 });
 $('#gear').addEventListener('click', () => openSettings());
+$('#vtag').addEventListener('click', () => { if (SNAP) openSettings('updates'); });
 
 /* ───────── events from Rust ───────── */
 // Blind-chord digits are handled entirely in Rust (lib.rs chord_digit), without the page.
@@ -294,6 +297,54 @@ listen('summon', async e => {
 });
 listen('hidden', () => { cur.shown = false; cur.pending = null; untilt(); ov.innerHTML = ''; });
 listen('toast', e => toast(String(e.payload)));
+listen('update', e => setUpdate(e.payload));
+
+/* ───────── updates: the version tag and Settings → Updates ───────── */
+function setUpdate(u) {
+  if (!u) return;
+  UPD = u;
+  renderTag();
+  const box = $('#upd');
+  if (box) box.innerHTML = updateHtml();
+}
+
+const updPct = () => UPD.total ? Math.min(100, Math.floor(UPD.downloaded * 100 / UPD.total)) : null;
+const mb = n => (n / 1048576).toFixed(1) + ' MB';
+const busyUpd = () => UPD.phase !== 'idle';
+
+function renderTag() {
+  const t = $('#vtag'), a = UPD.available, pct = updPct();
+  t.hidden = false;
+  t.classList.toggle('new', !!a && !busyUpd());
+  t.textContent = UPD.phase === 'downloading' ? `Updating ${pct ?? '…'}${pct == null ? '' : '%'}`
+    : UPD.phase === 'installing' ? 'Restarting…'
+    : a ? `v${a.version} available` : `v${UPD.current}`;
+  t.title = a ? `Hotbar v${UPD.current}: v${a.version} is available. Click for Settings → Updates.` : `Hotbar v${UPD.current}. Click for Settings → Updates.`;
+}
+
+function updLine() {
+  const u = UPD, a = u.available;
+  if (u.phase === 'checking') return 'Checking for updates…';
+  if (u.phase === 'downloading') return `Downloading v${a?.version ?? ''}…`;
+  if (u.phase === 'installing') return 'Installing: Hotbar closes and comes back in a few seconds.';
+  if (a) return `v${a.version} is available` + (a.date ? ` · released ${new Date(a.date).toLocaleDateString()}` : '');
+  if (u.checkedAt) return `Up to date · checked ${ago(u.checkedAt)}`;
+  return 'Not checked yet';
+}
+
+function updateHtml() {
+  const u = UPD, a = u.available, busy = busyUpd(), pct = updPct();
+  const moving = u.phase === 'downloading' || u.phase === 'installing';
+  return `<div class="upd-head">
+      <div class="upd-ver"><span>Installed</span><b>v${esc(u.current)}</b></div>
+      <div class="upd-state ${a && !busy ? 'new' : ''}" role="status">${esc(updLine())}${u.error && !busy ? `<span class="warn">${esc(u.error)}</span>` : ''}</div>
+      <button data-act="upd-check" ${busy ? 'disabled' : ''}>Check for updates</button>
+      <button class="pri" data-act="upd-install" ${a && !busy ? '' : 'disabled'}>${a ? `Install v${esc(a.version)}` : 'Install update'}</button>
+    </div>
+    ${moving ? `<div class="upd-bar ${pct == null ? 'indet' : ''}" role="progressbar" aria-valuemin="0" aria-valuemax="100" ${pct == null ? '' : `aria-valuenow="${pct}"`}><i style="width:${pct ?? 0}%"></i></div>
+      <div class="upd-sub">${u.phase === 'installing' ? 'Verified · starting the installer' : u.total ? `${mb(u.downloaded)} of ${mb(u.total)} · ${pct}%` : mb(u.downloaded)}</div>` : ''}
+    ${a?.notes ? `<div class="upd-notes"><span>What's new in v${esc(a.version)}</span>${esc(a.notes)}</div>` : ''}`;
+}
 
 function toast(msg) {
   const t = $('#toast');
@@ -313,7 +364,7 @@ function colorInput(c) {
 }
 const opts = (obj, val) => Object.entries(obj).map(([k, v]) => `<option value="${k}" ${k === val ? 'selected' : ''}>${esc(typeof v === 'string' ? v : v.label)}</option>`).join('');
 
-function openSettings() {
+function openSettings(section) {
   draft = JSON.parse(JSON.stringify(SNAP.config));
   // Fill look settings missing from a hand-edited config with what the menu actually uses,
   // so the form shows (and a save keeps) the current look instead of each list's first option.
@@ -330,6 +381,7 @@ function openSettings() {
   renderSettings();
   readSettings(); // normalise the draft to what the form shows, so "unchanged" compares equal
   draftBase = JSON.stringify(draft);
+  if (section === 'updates') $('#updSec').scrollIntoView({ block: 'start' });
 }
 function closeSettings(back = true) {
   $('#settings').hidden = true;
@@ -423,6 +475,13 @@ function renderSettingsHtml() {
         <label class="check"><input type="checkbox" id="lFocus" ${l.focusExisting ? 'checked' : ''}> Focus an open session instead of opening a duplicate</label>
       </div>
       <p class="hintline" style="margin-top:12px">In the menu: <kbd>↵</kbd> claude · <kbd>⇧↵</kbd> continue · <kbd>Alt↵</kbd> resume picker · <kbd>Ctrl↵</kbd> shell · <kbd>Ctrl⇧↵</kbd> force a new session · <kbd>Ctrl ,</kbd> settings</p>
+
+      <h2 id="updSec">Updates</h2>
+      <div class="upd" id="upd">${updateHtml()}</div>
+      <div class="grid" style="margin-top:12px">
+        <label class="check" style="grid-column: 1 / -1"><input type="checkbox" id="uAuto" ${c.updates?.autoCheck !== false ? 'checked' : ''}> Check automatically (shortly after start, then daily)</label>
+      </div>
+      <p class="hintline" style="margin-top:8px">Updates come from Hotbar's GitHub releases and are verified against its signing key before they run. They install silently in the background: Hotbar closes for a few seconds and comes back on its own.</p>
     </div>
     <footer><span class="path" id="cfgPath" title="Open in Notepad">${esc(SNAP.configPath)}</span><button data-act="cancel">Cancel</button><button class="pri" data-act="save">Save</button></footer>
   </div>`;
@@ -451,6 +510,7 @@ function readSettings() {
   c.launch.focusExisting = $('#lFocus').checked;
   c.launch.oneWindow = $('#lTabs').value === 'shared';
   c.launch.sameWindow = $('#lTabs').value !== 'new';
+  c.updates = { ...c.updates, autoCheck: $('#uAuto').checked };
 }
 
 const settingsEl = $('#settings');
@@ -466,6 +526,13 @@ settingsEl.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]');
   if (!b) return;
   const act = b.dataset.act, row = b.closest('.prow'), i = row ? +row.dataset.i : -1, P = draft.projects;
+  // update buttons act right away and leave the form (and its unsaved edits) alone
+  if (act === 'upd-check') return invoke('check_update').catch(err => toast(String(err)));
+  if (act === 'upd-install') {
+    if (!UPD?.available) return;
+    if (settingsDirty()) return toast('Save or cancel your changes first: installing restarts Hotbar.');
+    return invoke('install_update', { version: UPD.available.version }).catch(err => toast(String(err)));
+  }
   if (act === 'save') {
     readSettings();
     try {

@@ -70,11 +70,15 @@ before replacing files and starts it again afterwards (`src-tauri\windows\hooks.
 
 ## Updates
 
-Hotbar checks for a new version 30 s after it starts and then once a day, and never installs on its own:
-an update found shows up in the tray menu as **Install update vX** (and in the tray tooltip). Clicking it downloads
-the installer, verifies its signature against the public key in `tauri.conf.json` and installs it with a small
-progress window. **Check for updates…** checks right away and asks before installing. Each check is logged in
-`hotbar.log`; a failed check (offline, say) is only logged.
+Hotbar checks for a new version 30 s after it starts and then once a day (Settings → Updates → "Check
+automatically" turns that off), and never installs on its own. The tag under the logo shows the running version,
+or **vX available** when there's an update; clicking it opens **Settings → Updates**: installed version, last check,
+the new version's notes, **Check for updates** and **Install vX** with a download progress bar. The tray menu
+offers the same (**Install update vX**, or **Check for updates…**, which asks before installing).
+
+Installing downloads the installer, verifies its signature against the public key in `tauri.conf.json` and runs
+it silently in the background (`installMode: quiet`, i.e. NSIS `/S`): no wizard, no window, Hotbar just restarts. Each check is logged in `hotbar.log`; a failed check (offline, say) is only
+logged and shown in Settings, and retried within the hour.
 
 After the update the autostart task, if there is one, brings Hotbar back elevated; without it, the installer
 restarts Hotbar in the tray. `HOTBAR_UPDATE_ENDPOINT` overrides where `latest.json` is fetched from.

@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Hotbar",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "identifier": "dev.mkhaled.hotbar",
   "build": {
     "frontendDist": "../ui"
@@ -50,7 +50,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVEM0MzNTU2NjIzMkVDRTMKUldUajdESmlWalU4N2FHdTFXL2FpS0tHN1duNTdGc3FBaVlyUXA5SW54RS80c295QVR0d3hRLy8K",
       "endpoints": ["https://github.com/mhmd2520/Hotbar/releases/latest/download/latest.json"],
-      "windows": { "installMode": "passive" }
+      "windows": { "installMode": "quiet" }
     }
   }
 }

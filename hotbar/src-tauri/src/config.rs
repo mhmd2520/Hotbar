@@ -14,6 +14,7 @@ pub struct Config {
     pub ui: Value,
     pub projects: Vec<Project>,
     pub other: Other,
+    pub updates: Updates,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -66,6 +67,18 @@ pub struct Other {
     pub action: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Updates {
+    /// Check 30 s after start and then daily (Settings → Updates and the tray check either way)
+    pub auto_check: bool,
+}
+
+impl Default for Updates {
+    fn default() -> Self {
+        Self { auto_check: true }
+    }
+}
 impl Default for Trigger {
     fn default() -> Self {
         Self { double_tap: true, key: "leftCtrl".into(), tap_window_ms: 350, blind_chord: true, chord_ms: 200 }
@@ -106,6 +119,7 @@ impl Default for Config {
                 project("CC Figure", "D:\\CC Figure", "#a77bf0"),
             ],
             other: Other::default(),
+            updates: Updates::default(),
         }
     }
 }

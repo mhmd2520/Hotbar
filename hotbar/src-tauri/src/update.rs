@@ -1,12 +1,16 @@
 //! Self-update from the endpoint in tauri.conf.json (`plugins.updater`), or `HOTBAR_UPDATE_ENDPOINT`.
-//! Checked 30 s after start and then once a day; an update found is offered in the tray menu and is
-//! only installed when that item is clicked. The download is verified against the bundled public key.
+//! Checked 30 s after start and then once a day (unless `updates.autoCheck` is off); an update found is
+//! offered in Settings → Updates, on the version tag and in the tray menu, and is only installed when
+//! asked. The download is verified against the bundled public key.
+//!
+//! One `Status` describes it all: every change goes to the page as an `update` event and to the tray item.
 
 use crate::log;
+use serde::Serialize;
 use std::sync::{Mutex, MutexGuard};
 use std::time::{Duration, SystemTime};
 use tauri::menu::MenuItem;
-use tauri::{AppHandle, Manager, Url, Wry};
+use tauri::{AppHandle, Emitter, Manager, Url, Wry};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
@@ -20,11 +24,51 @@ const TICK: Duration = Duration::from_secs(60 * 60);
 const CHECK_TIMEOUT: Duration = Duration::from_secs(30);
 /// The plugin applies its timeout to the whole installer download, not just to connecting.
 const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(10 * 60);
+/// Without a Content-Length, progress is reported every this many bytes.
+const PROGRESS_STEP: u64 = 256 * 1024;
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Status {
+    /// The running version.
+    pub current: String,
+    /// The update on offer, from the last check that reached the endpoint (kept while a later one fails).
+    pub available: Option<Release>,
+    /// "idle" | "checking" | "downloading" | "installing" (the installer has started; Hotbar is exiting)
+    pub phase: &'static str,
+    /// Unix seconds of the last check that reached the endpoint.
+    pub checked_at: Option<u64>,
+    /// Why the last check or install failed; cleared by the next success.
+    pub error: Option<String>,
+    pub downloaded: u64,
+    pub total: Option<u64>,
+}
+
+#[derive(Clone, Serialize)]
+pub struct Release {
+    pub version: String,
+    pub notes: Option<String>,
+    /// RFC 3339
+    pub date: Option<String>,
+}
+
+impl Status {
+    fn initial(app: &AppHandle) -> Self {
+        let current = app.package_info().version.to_string();
+        Self { current, available: None, phase: "idle", checked_at: None, error: None, downloaded: 0, total: None }
+    }
+}
+
+impl Release {
+    fn of(u: &Update) -> Self {
+        let date = u.raw_json.get("pub_date").and_then(|d| d.as_str()).map(String::from);
+        Self { version: u.version.clone(), notes: u.body.clone().filter(|n| !n.trim().is_empty()), date }
+    }
+}
 
 pub struct Updates {
     item: MenuItem<Wry>,
-    /// Version the tray item currently offers ("Install update vX"), if any.
-    offered: Mutex<Option<String>>,
+    status: Mutex<Status>,
     /// Held while checking or installing (never across a dialog), so a click and the daily check
     /// never overlap.
     work: Mutex<()>,
@@ -32,14 +76,15 @@ pub struct Updates {
 
 /// Manage the state behind the tray item and start the background checks.
 pub fn start(app: &AppHandle, item: MenuItem<Wry>) {
-    app.manage(Updates { item, offered: Mutex::new(None), work: Mutex::new(()) });
+    app.manage(Updates { item, status: Mutex::new(Status::initial(app)), work: Mutex::new(()) });
     let app = app.clone();
     std::thread::spawn(move || {
         std::thread::sleep(FIRST_CHECK);
         let mut last_ok = None;
         loop {
             let now = SystemTime::now();
-            if due(last_ok, now) {
+            let auto = app.state::<crate::AppState>().store().cfg.updates.auto_check;
+            if auto && due(last_ok, now) {
                 if let Ok(_work) = app.state::<Updates>().work.try_lock() {
                     if check(&app, false).is_ok() {
                         last_ok = Some(now);
@@ -51,6 +96,44 @@ pub fn start(app: &AppHandle, item: MenuItem<Wry>) {
     });
 }
 
+/// The page may ask before setup has managed the state (it preloads while the app starts).
+pub fn status(app: &AppHandle) -> Status {
+    match app.try_state::<Updates>() {
+        Some(u) => u.status.lock().unwrap_or_else(|e| e.into_inner()).clone(),
+        None => Status::initial(app),
+    }
+}
+
+#[tauri::command]
+pub fn update_status(app: AppHandle) -> Status {
+    status(&app)
+}
+
+/// Settings → Updates → Check for updates. The result arrives as `update` events.
+#[tauri::command]
+pub fn check_update(app: AppHandle) {
+    std::thread::spawn(move || {
+        if let Ok(_work) = app.state::<Updates>().work.try_lock() {
+            let _ = check(&app, false);
+        }
+    });
+}
+
+/// Settings → Updates → Install vX. Checks again first and installs only if the endpoint still offers
+/// `version`; otherwise the new answer just shows up in the status for the user to look at.
+#[tauri::command]
+pub fn install_update(app: AppHandle, version: String) {
+    std::thread::spawn(move || {
+        let state = app.state::<Updates>();
+        let Ok(work) = state.work.try_lock() else { return };
+        if let Ok(Some(u)) = check(&app, true) {
+            if u.version == version {
+                let _ = install(&app, work, u);
+            }
+        }
+    });
+}
+
 /// Tray item clicked. Always checks again, so a release that was replaced since (or a retry after a
 /// failed install) uses the current metadata. "Install update vX" installs vX straight away; anything
 /// else (a plain check, or a newer version than the one offered) asks first.
@@ -58,63 +141,97 @@ pub fn on_menu(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
         let state = app.state::<Updates>();
-        let offered = offered(&app).clone();
+        let offered = status(&app).available.map(|r| r.version);
         let Ok(work) = state.work.try_lock() else { return };
         let found = check(&app, true);
         if let Ok(Some(u)) = &found {
             if offered.as_deref() == Some(u.version.as_str()) {
-                return install_and_report(&app, work, u.clone());
+                if let Err(e) = install(&app, work, u.clone()) {
+                    message(&app, &format!("Couldn't install the update:\n{e}"));
+                }
+                return;
             }
         }
         // dialogs are shown without holding `work`, so one left open doesn't block later clicks
         drop(work);
         match found {
             Ok(Some(u)) if confirm(&app, &u) => {
-                if let Ok(work) = state.work.try_lock() {
-                    install_and_report(&app, work, u);
+                let failed = state.work.try_lock().ok().and_then(|work| install(&app, work, u).err());
+                if let Some(e) = failed {
+                    message(&app, &format!("Couldn't install the update:\n{e}"));
                 }
             }
-            Ok(Some(_)) => {} // "Later": stays offered in the menu
-            Ok(None) => message(&app, &format!("Hotbar is up to date (v{}).", version(&app))),
+            Ok(Some(_)) => {} // "Later": stays offered
+            Ok(None) => message(&app, &format!("Hotbar is up to date (v{}).", app.package_info().version)),
             Err(e) => message(&app, &format!("Couldn't check for updates:\n{e}")),
         }
     });
 }
 
-fn offered(app: &AppHandle) -> MutexGuard<'_, Option<String>> {
-    app.state::<Updates>().inner().offered.lock().unwrap_or_else(|e| e.into_inner())
+fn lock_status(app: &AppHandle) -> MutexGuard<'_, Status> {
+    app.state::<Updates>().inner().status.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-fn version(app: &AppHandle) -> String {
-    app.package_info().version.to_string()
+/// Change the status, then show it on the tray item and send it to the page.
+fn publish(app: &AppHandle, change: impl FnOnce(&mut Status)) {
+    let s = {
+        let mut s = lock_status(app);
+        change(&mut s);
+        s.clone()
+    };
+    let (text, enabled) = tray_item(&s);
+    let item = &app.state::<Updates>().item;
+    let _ = item.set_text(text);
+    let _ = item.set_enabled(enabled);
+    if let Some(tray) = app.tray_by_id("hotbar") {
+        let tip = s.available.as_ref().map_or(crate::TOOLTIP.to_string(), |r| format!("Hotbar: update v{} available", r.version));
+        let _ = tray.set_tooltip(Some(tip));
+    }
+    let _ = app.emit("update", &s);
 }
 
-/// Ask the endpoint; an update found is offered in the tray menu. A failed check leaves the menu as
-/// it was, so an update already offered stays offered while offline. `to_install`: the result may be
-/// installed, so it needs the installer arguments (which cost a `schtasks` call).
+fn tray_item(s: &Status) -> (String, bool) {
+    match (s.phase, &s.available) {
+        ("checking", _) => ("Checking for updates…".into(), false),
+        ("downloading" | "installing", Some(r)) => match percent(s.downloaded, s.total) {
+            Some(p) => (format!("Downloading v{}… {p}%", r.version), false),
+            None => (format!("Downloading v{}…", r.version), false),
+        },
+        (_, Some(r)) => (format!("Install update v{}", r.version), true),
+        _ => (CHECK_LABEL.into(), true),
+    }
+}
+
+fn percent(done: u64, total: Option<u64>) -> Option<u64> {
+    total.filter(|&t| t > 0).map(|t| (done.min(t) * 100) / t)
+}
+
+fn unix_now() -> Option<u64> {
+    SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).ok().map(|d| d.as_secs())
+}
+
+/// Ask the endpoint. A failed check leaves the offer as it was, so an update already offered stays
+/// offered while offline. `to_install`: the result may be installed, so it needs the installer
+/// arguments (which cost a `schtasks` call).
 fn check(app: &AppHandle, to_install: bool) -> Result<Option<Update>, String> {
-    set_item(app, "Checking for updates…", false);
+    publish(app, |s| s.phase = "checking");
     let result = updater(app, to_install).and_then(|u| tauri::async_runtime::block_on(u.check()).map_err(|e| e.to_string()));
     match &result {
-        Ok(Some(u)) => {
-            log(&format!("update: v{} available (running v{})", u.version, u.current_version));
-            offer(app, &u.version);
-        }
-        Ok(None) => {
-            log(&format!("update: up to date (v{})", version(app)));
-            *offered(app) = None;
-            set_item(app, CHECK_LABEL, true);
-            set_tooltip(app, crate::TOOLTIP);
-        }
-        Err(e) => {
-            log(&format!("update check failed: {e}"));
-            let still = offered(app).clone();
-            match still {
-                Some(v) => offer(app, &v),
-                None => set_item(app, CHECK_LABEL, true),
-            }
-        }
+        Ok(Some(u)) => log(&format!("update: v{} available (running v{})", u.version, u.current_version)),
+        Ok(None) => log(&format!("update: up to date (v{})", app.package_info().version)),
+        Err(e) => log(&format!("update check failed: {e}")),
     }
+    publish(app, |s| {
+        s.phase = "idle";
+        match &result {
+            Ok(found) => {
+                s.available = found.as_ref().map(Release::of);
+                s.checked_at = unix_now();
+                s.error = None;
+            }
+            Err(e) => s.error = Some(e.clone()),
+        }
+    });
     result
 }
 
@@ -128,6 +245,7 @@ fn updater(app: &AppHandle, to_install: bool) -> Result<tauri_plugin_updater::Up
         let handle = app.clone();
         b = b.installer_args(installer_args(task)).on_before_exit(move || {
             log(&format!("update: starting the installer and exiting (autostart task: {task})"));
+            publish(&handle, |s| s.phase = "installing");
             // the process exits without tearing down, which would leave a ghost icon in the tray
             set_tray_visible(&handle, false);
         });
@@ -135,38 +253,43 @@ fn updater(app: &AppHandle, to_install: bool) -> Result<tauri_plugin_updater::Up
     b.restart_after_install(false).build().map_err(|e| e.to_string())
 }
 
-/// Download, verify the signature and hand over to the installer, which ends this process. Only
-/// returns on failure, and reports it once `work` is released.
-fn install_and_report(app: &AppHandle, work: MutexGuard<'_, ()>, mut update: Update) {
+/// Download (reporting progress), verify the signature and hand over to the installer, which ends
+/// this process. Only returns on failure, with `work` released.
+fn install(app: &AppHandle, work: MutexGuard<'_, ()>, mut update: Update) -> Result<(), String> {
     update.timeout = Some(DOWNLOAD_TIMEOUT);
-    set_item(app, &format!("Downloading v{}…", update.version), false);
     log(&format!("update: downloading v{} from {}", update.version, update.download_url));
-    let result = tauri::async_runtime::block_on(update.download_and_install(|_, _| {}, || {}));
+    publish(app, |s| {
+        s.phase = "downloading";
+        s.downloaded = 0;
+        s.total = None;
+        s.error = None;
+    });
+    let (mut done, mut reported) = (0u64, None);
+    let result = tauri::async_runtime::block_on(update.download_and_install(
+        |chunk, total| {
+            done += chunk as u64;
+            let mark = percent(done, total).unwrap_or(done / PROGRESS_STEP);
+            if reported != Some(mark) {
+                reported = Some(mark);
+                publish(app, |s| {
+                    s.downloaded = done;
+                    s.total = total;
+                });
+            }
+        },
+        || {},
+    ))
+    .map_err(|e| e.to_string());
     drop(work);
-    if let Err(e) = result {
+    if let Err(e) = &result {
         log(&format!("update install failed: {e}"));
         set_tray_visible(app, true);
-        offer(app, &update.version);
-        message(app, &format!("Couldn't install the update:\n{e}"));
+        publish(app, |s| {
+            s.phase = "idle";
+            s.error = Some(format!("Couldn't install v{}: {e}", update.version));
+        });
     }
-}
-
-fn offer(app: &AppHandle, version: &str) {
-    *offered(app) = Some(version.to_owned());
-    set_item(app, &format!("Install update v{version}"), true);
-    set_tooltip(app, &format!("Hotbar: update v{version} available"));
-}
-
-fn set_item(app: &AppHandle, text: &str, enabled: bool) {
-    let item = &app.state::<Updates>().item;
-    let _ = item.set_text(text);
-    let _ = item.set_enabled(enabled);
-}
-
-fn set_tooltip(app: &AppHandle, text: &str) {
-    if let Some(tray) = app.tray_by_id("hotbar") {
-        let _ = tray.set_tooltip(Some(text));
-    }
+    result
 }
 
 fn set_tray_visible(app: &AppHandle, visible: bool) {
@@ -251,5 +374,28 @@ mod tests {
     fn restart_is_left_to_the_autostart_task_when_there_is_one() {
         assert!(installer_args(true).is_empty());
         assert_eq!(installer_args(false), ["/R", "/ARGS", "--background"]);
+    }
+
+    #[test]
+    fn progress_percent_is_clamped_and_needs_a_size() {
+        assert_eq!(percent(0, Some(200)), Some(0));
+        assert_eq!(percent(100, Some(200)), Some(50));
+        assert_eq!(percent(300, Some(200)), Some(100));
+        assert_eq!(percent(100, None), None);
+        assert_eq!(percent(100, Some(0)), None);
+    }
+
+    fn status(phase: &'static str, available: Option<&str>, downloaded: u64, total: Option<u64>) -> Status {
+        let available = available.map(|v| Release { version: v.into(), notes: None, date: None });
+        Status { current: "0.1.5".into(), available, phase, checked_at: None, error: None, downloaded, total }
+    }
+
+    #[test]
+    fn tray_item_follows_the_status() {
+        assert_eq!(tray_item(&status("idle", None, 0, None)), (CHECK_LABEL.into(), true));
+        assert_eq!(tray_item(&status("checking", Some("0.1.6"), 0, None)), ("Checking for updates…".into(), false));
+        assert_eq!(tray_item(&status("idle", Some("0.1.6"), 0, None)), ("Install update v0.1.6".into(), true));
+        assert_eq!(tray_item(&status("downloading", Some("0.1.6"), 50, Some(200))), ("Downloading v0.1.6… 25%".into(), false));
+        assert_eq!(tray_item(&status("downloading", Some("0.1.6"), 50, None)), ("Downloading v0.1.6…".into(), false));
     }
 }

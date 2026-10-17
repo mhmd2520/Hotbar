@@ -37,6 +37,7 @@ struct Snapshot {
     config_path: String,
     elevated: bool,
     error: Option<String>,
+    update: update::Status,
 }
 
 const TOOLTIP: &str = "Hotbar: double-tap Ctrl";
@@ -254,6 +255,7 @@ async fn snapshot(app: AppHandle, state: State<'_, AppState>) -> Result<Snapshot
         config_path: config::path().display().to_string(),
         elevated: winutil::is_elevated(),
         error,
+        update: update::status(&app),
     })
 }
 
@@ -332,7 +334,10 @@ pub fn run() {
             hide,
             set_pinned,
             pick_folder,
-            open_config_file
+            open_config_file,
+            update::update_status,
+            update::check_update,
+            update::install_update
         ])
         .on_window_event(|window, event| match event {
             WindowEvent::CloseRequested { api, .. } => {
