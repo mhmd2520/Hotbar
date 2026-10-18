@@ -403,11 +403,11 @@ pub fn run() {
 
             // Autostart passes --background and stays silent in the tray. A start from the Start menu
             // or desktop icon opens the menu, so the click visibly does something. Right after an
-            // update (with updates.openAfterUpdate) it opens Settings → Updates instead, either way.
+            // update (with updates.openAfterUpdate) it opens the menu either way, saying it updated.
             // A broken config.json is reported whenever the menu opens (Store keeps returning the
             // parse error).
             let view = if updated {
-                Some("updates")
+                Some("updated")
             } else {
                 (!std::env::args().any(|a| a == "--background")).then_some("menu")
             };

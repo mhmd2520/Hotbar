@@ -290,12 +290,9 @@ listen('summon', async e => {
   if (error) toast(error);
   const editing = !$('#settings').hidden;
   if (editing) invoke('set_pinned', { pinned: true }).catch(() => {}); // keep an open editor and its unsaved changes
-  if (view === 'settings' || view === 'updates') {
-    renderStage(false);
-    if (!editing) openSettings(view);
-    if (view === 'updates' && UPD?.updatedFrom) toast(`Hotbar updated to v${UPD.current}`);
-    return;
-  }
+  if (view === 'settings') { renderStage(false); if (!editing) openSettings(); return; }
+  // back from an update: the menu, with a word on how it went (details in Settings → Updates)
+  if (view === 'updated') toast(UPD?.updatedFrom ? `Hotbar updated to v${UPD.current}` : UPD?.error || 'Hotbar restarted after an update');
   renderStage(!editing);
   if (!editing) blip(440, .06, 'triangle', .05);
   if (cur.pending && !editing) { const p = cur.pending; cur.pending = null; launchDigit(p.d, p); }
@@ -486,7 +483,7 @@ function renderSettingsHtml() {
       <div class="upd" id="upd">${updateHtml()}</div>
       <div class="grid" style="margin-top:12px">
         <label class="check" style="grid-column: 1 / -1"><input type="checkbox" id="uAuto" ${c.updates?.autoCheck !== false ? 'checked' : ''}> Check automatically (shortly after start, then daily)</label>
-        <label class="check" style="grid-column: 1 / -1"><input type="checkbox" id="uReopen" ${c.updates?.openAfterUpdate !== false ? 'checked' : ''}> Open Hotbar after an update (here, showing the result) instead of restarting silently in the tray</label>
+        <label class="check" style="grid-column: 1 / -1"><input type="checkbox" id="uReopen" ${c.updates?.openAfterUpdate !== false ? 'checked' : ''}> Open the Hotbar menu after an update instead of restarting silently in the tray</label>
       </div>
       <p class="hintline" style="margin-top:8px">Updates come from Hotbar's GitHub releases and are verified against its signing key before they run. They install silently in the background: Hotbar closes for a few seconds and comes back on its own.</p>
     </div>

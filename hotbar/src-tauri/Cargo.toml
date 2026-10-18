@@ -1,6 +1,6 @@
 [package]
 name = "hotbar"
-version = "0.1.9"
+version = "0.1.10"
 description = "One keystroke to any project, Claude Code already running."
 edition = "2021"
 

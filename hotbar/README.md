@@ -78,8 +78,8 @@ offers the same (**Install update vX**, or **Check for updates…**, which asks 
 
 Installing downloads the installer, verifies its signature against the public key in `tauri.conf.json` and runs
 it silently in the background (`installMode: quiet`, i.e. NSIS `/S`): no wizard, no window, Hotbar just restarts.
-It then opens on Settings → Updates ("Updated from vX to vY"); untick "Open Hotbar after an update" to have it come
-back silently in the tray instead. (Hotbar leaves `%APPDATA%\Hotbar\updating.json` for its next start to find; if
+It then opens its menu, with a toast "Hotbar updated to vY" (Settings → Updates also shows "Updated from vX to
+vY"); untick "Open the Hotbar menu after an update" to have it come back silently in the tray instead. (Hotbar leaves `%APPDATA%\Hotbar\updating.json` for its next start to find; if
 that start is still the old version, Settings → Updates says the update didn't finish.) Each check is logged in `hotbar.log`; a failed check (offline, say) is only
 logged and shown in Settings, and retried within the hour.
 

@@ -313,7 +313,8 @@ fn marker_path() -> PathBuf {
 }
 
 /// At start: was an update just installed? Records the outcome in the status (shown in Settings →
-/// Updates) and says whether to open that view, i.e. `updates.openAfterUpdate` for a recent update.
+/// Updates) and says whether to open the menu to report it, i.e. `updates.openAfterUpdate` for a
+/// recent update.
 pub fn after_restart(app: &AppHandle) -> bool {
     let path = marker_path();
     let Ok(text) = std::fs::read_to_string(&path) else { return false };

@@ -72,7 +72,7 @@ pub struct Other {
 pub struct Updates {
     /// Check 30 s after start and then daily (Settings → Updates and the tray check either way)
     pub auto_check: bool,
-    /// After installing an update, Hotbar comes back showing Settings → Updates (instead of silently in the tray)
+    /// After installing an update, Hotbar comes back with its menu open (instead of silently in the tray)
     pub open_after_update: bool,
 }
 
