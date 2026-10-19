@@ -93,12 +93,14 @@ impl Default for Launch {
 }
 impl Default for Other {
     fn default() -> Self {
-        Self { path: "D:\\".into(), action: "shell".into() }
+        let home = std::env::var("USERPROFILE").unwrap_or_else(|_| "C:\\".into());
+        Self { path: home, action: "shell".into() }
     }
 }
 
-fn project(name: &str, path: &str, color: &str) -> Project {
-    Project { name: name.into(), path: path.into(), color: color.into(), enter: "claude".into(), ..Default::default() }
+/// A first-run placeholder: no folder yet, so opening it takes the user to Settings to pick one.
+fn placeholder(n: u32, color: &str) -> Project {
+    Project { name: format!("Project {n}"), color: color.into(), enter: "claude".into(), ..Default::default() }
 }
 
 impl Default for Config {
@@ -112,14 +114,7 @@ impl Default for Config {
                 "texture": "holo", "depth": "slab", "textureStrength": 0.6, "buttonTilt": true,
                 "panelTilt": true, "openAnim": "drop", "selectAnim": "press", "sound": true, "animations": true
             }),
-            projects: vec![
-                project("RailPair", "D:\\Hitachi-Live", "#e0563b"),
-                project("Hitachi CV", "D:\\HitachiCV", "#d6334f"),
-                project("PingPair", "D:\\PingPair-PrivDev", "#3fa7d6"),
-                project("My Web CV", "D:\\CV-Web", "#6cbf4a"),
-                project("AI GPU", "D:\\AI-GPU", "#76b900"),
-                project("CC Figure", "D:\\CC Figure", "#a77bf0"),
-            ],
+            projects: vec![placeholder(1, "#e0563b"), placeholder(2, "#3fa7d6"), placeholder(3, "#6cbf4a")],
             other: Other::default(),
             updates: Updates::default(),
         }
@@ -214,6 +209,13 @@ fn write(cfg: &Config) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn first_run_projects_are_unset_placeholders() {
+        let cfg = Config::default();
+        assert_eq!(cfg.projects.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(), ["Project 1", "Project 2", "Project 3"]);
+        assert!(cfg.projects.iter().all(|p| p.path.is_empty()));
+    }
 
     #[test]
     fn broken_config_keeps_reporting_and_is_backed_up_before_a_save() {

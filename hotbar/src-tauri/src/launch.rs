@@ -261,6 +261,10 @@ fn git_branch(dir: &str) -> Option<String> {
 /// `tabs`: every open Windows Terminal tab's title (`winutil::terminal_tab_titles`).
 pub fn status(p: &Project, tabs: &[String]) -> Status {
     let dir = normalize_dir(&p.path);
+    if dir.is_empty() {
+        // a placeholder with no folder yet: "" would resolve against Hotbar's own working directory
+        return Status::default();
+    }
     let mut st = Status { exists: Path::new(&dir).is_dir(), ..Default::default() };
     if let Ok(entries) = std::fs::read_dir(transcript_dir(&dir)) {
         for e in entries.flatten() {
@@ -280,6 +284,10 @@ pub fn status(p: &Project, tabs: &[String]) -> Status {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn cc_figure() -> Project {
+        Project { name: "CC Figure".into(), path: "D:\\CC Figure".into(), color: "#a77bf0".into(), enter: "claude".into(), ..Default::default() }
+    }
 
     #[test]
     fn quoting_follows_argv_rules() {
@@ -302,7 +310,7 @@ mod tests {
         assert!(is_hex_color("#e0563b") && is_hex_color("#f00"));
         assert!(!is_hex_color("#f00 ; new-tab calc") && !is_hex_color("red"));
         let cfg = Config::default();
-        let mut p = cfg.projects[0].clone();
+        let mut p = cc_figure();
         p.color = "#f00 ; new-tab calc".into();
         p.name = "a;b".into();
         let a = wt_args(&cfg, &p, Mode::Claude);
@@ -329,7 +337,7 @@ mod tests {
     #[test]
     fn wt_args_escape_semicolons_and_quote_paths() {
         let cfg = Config::default();
-        let mut p = cfg.projects[5].clone(); // CC Figure
+        let mut p = cc_figure();
         p.pre = ".venv\\Scripts\\Activate.ps1".into();
         let a = wt_args(&cfg, &p, Mode::Continue);
         assert!(a.starts_with("-w hotbar-CC-Figure --maximized new-tab --title \"CC Figure\" --suppressApplicationTitle"));
@@ -340,12 +348,19 @@ mod tests {
     #[test]
     fn window_target_follows_launch_settings() {
         let mut cfg = Config::default();
-        let p = cfg.projects[5].clone(); // CC Figure
+        let p = cc_figure();
         assert_eq!(window_target(&cfg, &p), "hotbar-CC-Figure");
         cfg.launch.one_window = true;
         assert_eq!(window_target(&cfg, &p), "hotbar");
         cfg.launch.one_window = false;
         cfg.launch.same_window = false;
         assert_eq!(window_target(&cfg, &p), "new");
+    }
+
+    #[test]
+    fn a_placeholder_without_a_folder_has_no_status() {
+        let p = Project { name: "Project 1".into(), ..Default::default() };
+        let st = status(&p, &["Project 1".into()]);
+        assert!(!st.exists && st.branch.is_none() && st.sessions == 0 && !st.running);
     }
 }

@@ -219,6 +219,11 @@ fn chord_digit(app: &AppHandle, d: u8) {
 fn open_index(app: &AppHandle, cfg: &Config, index: usize, mode: &str, force_new: bool) -> Result<String, String> {
     hide_overlay(app);
     let result = match cfg.projects.get(index) {
+        // A placeholder with no folder yet (e.g. via the blind chord): Settings, to pick one
+        Some(p) if p.path.trim().is_empty() => {
+            show_overlay(app, "settings");
+            return Ok(format!("{} has no folder yet", p.name));
+        }
         Some(p) => launch::launch(cfg, p, launch::Mode::parse(mode), force_new),
         None if cfg.other.action == "pick" => {
             let start = launch::normalize_dir(&cfg.other.path);

@@ -61,10 +61,10 @@ function items() {
   const cfg = SNAP.config;
   return [
     ...cfg.projects.map((p, i) => {
-      const st = SNAP.status[i] || {};
-      const last = st.exists === false ? '⚠ folder missing'
+      const st = SNAP.status[i] || {}, unset = !p.path?.trim();
+      const last = unset ? 'no folder yet · ↵ to choose one' : st.exists === false ? '⚠ folder missing'
         : (st.running ? '● running' : '') + (st.running && st.lastSession ? ' · ' : '') + (ago(st.lastSession) || (st.running ? '' : 'no sessions yet'));
-      return { ...p, color: safeColor(p.color), idx: i, key: i < 9 ? String(i + 1) : '', last, git: st.branch || '—', missing: st.exists === false };
+      return { ...p, color: safeColor(p.color), idx: i, key: i < 9 ? String(i + 1) : '', last, git: st.branch || '—', unset, missing: !unset && st.exists === false };
     }),
     { name: 'Other…', path: cfg.other.path, color: '#8d8d8d', other: true, idx: cfg.projects.length, key: '0', last: '', git: '' },
   ];
@@ -132,6 +132,10 @@ function modeFor(e, it) {
 async function launch(k, e = {}) {
   const L = visible(), it = L[k];
   if (!it || cur.busy) return;
+  if (it.unset) {
+    openSettings(it.idx);
+    return toast(`Choose a folder for ${it.name}`);
+  }
   if (it.missing) {
     toast(`Folder not found: ${it.path}`);
     const el = $(`#ov [data-k="${k}"]`);
@@ -385,6 +389,8 @@ function openSettings(section) {
   readSettings(); // normalise the draft to what the form shows, so "unchanged" compares equal
   draftBase = JSON.stringify(draft);
   if (section === 'updates') $('#updSec').scrollIntoView({ block: 'start' });
+  // a project index: that row, ready for Browse…
+  if (typeof section === 'number') $(`#pList .prow[data-i="${section}"] [data-act="browse"]`)?.focus();
 }
 function closeSettings(back = true) {
   $('#settings').hidden = true;
@@ -428,7 +434,8 @@ function renderSettingsHtml() {
         <select data-f="enter" title="What Enter does"><option value="claude">↵ claude</option><option value="continue">↵ claude --continue</option><option value="shell">↵ shell only</option></select>
         <span class="acts"><button data-act="up" title="Move up">↑</button><button data-act="down" title="Move down">↓</button><button data-act="del" title="Remove">✕</button></span>
         <span class="more"><input type="text" class="mono" data-f="pre" value="${esc(p.pre)}" placeholder="Run first (optional), e.g. .venv\\Scripts\\Activate.ps1"><input type="text" class="mono" data-f="flags" value="${esc(p.flags)}" placeholder="Extra claude flags (optional), e.g. --model opus"></span>
-        ${status[i] && status[i].exists === false && p.path === SNAP.config.projects[i]?.path ? `<span class="warn">⚠ This folder doesn't exist right now.</span>` : ''}
+        ${!p.path.trim() ? `<span class="warn">Choose this project's folder with Browse…</span>`
+          : status[i] && status[i].exists === false && p.path === SNAP.config.projects[i]?.path ? `<span class="warn">⚠ This folder doesn't exist right now.</span>` : ''}
       </div>`).join('')}</div>
       <div style="margin-top:8px"><button data-act="add">+ Add project</button></div>
 
@@ -557,7 +564,7 @@ settingsEl.addEventListener('click', async e => {
     if (picked) {
       if (act === 'browse') {
         P[i].path = picked;
-        if (!P[i].name || P[i].name === 'New project') P[i].name = picked.split(/[\\/]/).filter(Boolean).pop() || picked;
+        if (!P[i].name || /^(?:New project|Project \d+)$/.test(P[i].name)) P[i].name = picked.split(/[\\/]/).filter(Boolean).pop() || picked;
       } else draft.other.path = picked;
     }
   }
